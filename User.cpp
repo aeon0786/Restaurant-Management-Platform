@@ -41,3 +41,7 @@ string User::getName () const
 {
     return name;
 }
+Role User::getRole () const 
+{
+    return role;
+}

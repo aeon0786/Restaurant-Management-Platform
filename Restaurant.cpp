@@ -45,7 +45,7 @@ void Restaurant::getInfo () const
     cout << "---------- " << getName() << " Restaurant ----------" << endl
         << "Address : " << getAddress() << "ID: " << getID() << endl
         << "Phone : " << getPhoneNumber() << endl
-        << "Status" << status << endl
+        << "Status : " << status << endl
         << "Approximate prep time: " << getTime() << endl
         << getAdditional() << endl;
 }

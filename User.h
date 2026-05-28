@@ -18,6 +18,7 @@ class User
         void setInternalId (int);
     public:
         User (string = "Unknown User" , string);
+        virtual ~User() = default;
         bool UpdatePass (string, string);
         bool UpdateUserName (string, string);
         bool UpdatePhoneNumber (string, string);
@@ -25,4 +26,5 @@ class User
 
         string get_UserName () const;
         string getName () const;
+        Role getRole () const;
 };
