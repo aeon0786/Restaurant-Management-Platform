@@ -10,7 +10,7 @@ class Drink:public Item
     private:
         double volume;
     public:
-        Drink (string n, string desc, int i, double price, int vol)
+        Drink (string n, string desc, int i, double price, double vol)
         : Item(n, desc, i, price),
         volume (vol)
         { type = DRINK; }
@@ -21,6 +21,10 @@ class Drink:public Item
             cout << "Food : " << name << " | Price : " << finalPrice ()
                 << "\nVolume : " << volume << " ml | Status : " << stat << endl
                 << "Description : " << description << endl;
+        }
+        Item* clone () const override 
+        {
+            return new Drink(*this);
         }
         double finalPrice () const override
         {

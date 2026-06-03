@@ -20,8 +20,10 @@ class Item
 
         virtual void printInfo () const = 0;
         virtual double finalPrice () const = 0;
+        virtual Item* clone() const = 0;
 
-        void setType (Item_type t) { type = t; }
+        void setType (Item_type);
+        void setItemStatus (Item_Status);
 
         string getName () const;
         double getBase_price () const;

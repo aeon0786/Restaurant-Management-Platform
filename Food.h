@@ -22,6 +22,10 @@ class Food:public Item
                 << "\nPrep time : " << preparation_time << " mins | Status : " << stat << endl
                 << "Description : " << description << endl;
         }
+        Item* clone () const override 
+        {
+            return new Food(*this);
+        }
         double finalPrice () const override
         {
             if (preparation_time > 30)
