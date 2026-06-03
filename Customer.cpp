@@ -1,7 +1,7 @@
 #include "Customer.h"
 
-Customer::Customer (string name, string pass) 
-    : User(name, pass),
+Customer::Customer (string name, string pass, Role r) 
+    : User(name, pass, r),
     currentOrder(nullptr),
     balance(0)
 {}

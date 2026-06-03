@@ -10,7 +10,7 @@ class Customer:public User
         Order* currentOrder;
         double balance;
     public:
-        Customer (string, string);
+        Customer (string, string, Role);
         void addBalance (double);
         double getBalance () const;
         void createNewOrder (string);

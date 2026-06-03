@@ -1,7 +1,7 @@
 #include <iostream>
 #include "User.h"
 
-User::User (string Uname, string pass) : username(Uname), password(pass) {}
+User::User (string Uname, string pass, Role r) : username(Uname), password(pass), role(r) {}
 int User::getInternalId () { return id; }
 void User::setInternalId (int new_id) { id = new_id; }
 

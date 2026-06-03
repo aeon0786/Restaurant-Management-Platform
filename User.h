@@ -3,7 +3,7 @@
 
 using namespace std;
 
-enum Role {Customer, RestaurantManager, SystemAdmin};
+enum class Role {Uncertain, Customer, RestaurantManager, SystemAdmin};
 class User
 {
     private:
@@ -17,7 +17,7 @@ class User
         int getInternalId ();
         void setInternalId (int);
     public:
-        User (string = "Unknown User" , string);
+        User (string = "Unknown User" , string, Role = Role::Uncertain);
         virtual ~User() = default;
         bool UpdatePass (string, string);
         bool UpdateUserName (string, string);
