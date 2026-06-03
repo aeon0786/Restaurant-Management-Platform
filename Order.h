@@ -16,8 +16,11 @@ class Order
     public:
         Order (string, OrderStatus = OrderStatus::WAITING);
 
+        void setRegisteredStatus ();
+        OrderStatus getOrderStatus () const;
         string getOrderName () const;
         void AddItem (int, Menu &);
         void MoveItem (int);
+        double calculateTotalPrice () const;
         void DisplayOrder () const;
 };

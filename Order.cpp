@@ -1,6 +1,8 @@
 #include "Order.h"
 
 Order::Order (string n, OrderStatus stat) : name(n), status(stat) {}
+void Order::setRegisteredStatus () { status = OrderStatus::REGISTERED; }
+OrderStatus Order::getOrderStatus () const { return status; }
 void Order::AddItem (int id, Menu &m)
 {
     Item *item = m.FindItem(id);
@@ -22,6 +24,15 @@ void Order::MoveItem (int id)
         }
     }
     cout << "Item with ID " << id << " not found!" << endl;
+}
+double Order::calculateTotalPrice () const
+{
+    double total;
+    for (const auto item : order)
+    {
+        total += item->finalPrice();
+    }
+    return total;
 }
 void Order::DisplayOrder () const
 {
