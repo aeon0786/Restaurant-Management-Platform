@@ -1,9 +1,11 @@
 #pragma once
 #include <string>
+#include <vector>
+#include "Order.h"
 
 using namespace std;
 
-inline string clear = "\033[2J\033[1;1H";
+
 enum Status {Disable, Enable};
 class Restaurant
 {
@@ -13,6 +15,7 @@ class Restaurant
             phone_number,
             additional_Details;
         int ID;
+        vector<Order *> OrdersHistory;
         Status status;
         unsigned int time;
     public:
@@ -23,13 +26,18 @@ class Restaurant
                     unsigned int = 0,
                     string = "", 
                     Status = Disable
-                    );
-        void setName (string);
-        void setAddress (string);
-        void setPhoneNumber (string);
-        void setAdditional (string);
+                );
+        
+        void addOrder (Order *);
+        void removeOrder(unsigned int);
+        void sortOrders ();
+        void displayOrdersHistory () const;
+        void setName (string &);
+        void setAddress (string &);
+        void setPhoneNumber (string &);
+        void setAdditional (string &);
         void setID (int);
-        void setStatus (string);
+        void setStatus (string &);
         void setTime (unsigned int);
 
         void getInfo () const;
@@ -40,4 +48,6 @@ class Restaurant
         int getID () const;
         bool getStatus () const;
         unsigned int getTime () const;
-};
+
+        Order *findOrder(int) const;
+}; 

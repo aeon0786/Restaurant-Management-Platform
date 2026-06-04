@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include "Restaurant.h"
 
 Restaurant::Restaurant (string res_name, string res_address, string res_phone, int res_id, unsigned int pre_time, string exp, Status res_status)
@@ -11,19 +12,52 @@ Restaurant::Restaurant (string res_name, string res_address, string res_phone, i
     additional_Details = exp;
     status = res_status;
 }
-void Restaurant::setName (string n)
+void Restaurant::addOrder (Order *order)
+{
+    if (order != nullptr)
+        OrdersHistory.push_back(order);
+        sortOrders();
+}
+void Restaurant::removeOrder(unsigned int id) 
+{
+    for (auto it = OrdersHistory.begin(); it != OrdersHistory.end(); ++it) {
+        if ((*it)->getOrderid() == id) {
+            OrdersHistory.erase(it);
+            cout << "Order '" << (*it)->getOrderName() << "' removed from restaurant history." << endl;
+            return;
+        }
+    }
+    cout << "Order not found in history!" << endl;
+}
+void Restaurant::sortOrders ()
+{
+    std::sort(OrdersHistory.begin(), OrdersHistory.end(), [](Order* a, Order* b)
+    {
+        a->getOrderStatus() < b->getOrderStatus();
+    });
+    cout << "Orders history sorted by Status successfully." << endl;
+}
+void Restaurant::displayOrdersHistory () const
+{
+    for (const auto order : OrdersHistory)
+    {
+        cout << "--------------------------------------------------------" << endl;
+        order->DisplayOrder();
+    }
+}
+void Restaurant::setName (string &n)
 {
     name = n;
 }
-void Restaurant::setAddress (string add)
+void Restaurant::setAddress (string &add)
 {
     address = add;
 }
-void Restaurant::setPhoneNumber (string phone)
+void Restaurant::setPhoneNumber (string &phone)
 {
     phone_number = phone;
 }
-void Restaurant::setAdditional (string exp)
+void Restaurant::setAdditional (string &exp)
 {
     additional_Details = exp;
 }
@@ -31,7 +65,7 @@ void Restaurant::setID (int id)
 {
     ID = id;
 }
-void Restaurant::setStatus (string st)
+void Restaurant::setStatus (string &st)
 {
     status = (st == "Active") ? Enable : Disable;
 }
@@ -76,4 +110,15 @@ bool Restaurant::getStatus () const
 unsigned int Restaurant::getTime () const
 {
     return time;
+}
+Order *Restaurant::findOrder (int id) const
+{
+    for (const auto order : OrdersHistory)
+    {
+        if (order->getOrderid() == id)
+        {
+            return order;
+        }
+    }
+    return nullptr;
 }
