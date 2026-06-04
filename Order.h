@@ -11,14 +11,16 @@ class Order
 {
     private:
         string name;
+        unsigned int id;
         OrderStatus status;
         vector <Item*> order;
     public:
         Order (string, OrderStatus = OrderStatus::WAITING);
 
-        void setRegisteredStatus ();
+        void setOrderStatus (OrderStatus = OrderStatus::REGISTERED);
         OrderStatus getOrderStatus () const;
         string getOrderName () const;
+        unsigned int getOrderid () const;
         void AddItem (int, Menu &);
         void MoveItem (int);
         double calculateTotalPrice () const;

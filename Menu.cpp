@@ -11,11 +11,11 @@ void Menu::AddFood (string name, string desc, int id, double base_price, int pre
 {
     items.push_back (new Food(name, desc, id, base_price, prep_time));
 }
-void Menu::AddDrink (string name, string desc, int id, double base_price, double volume)
+void Menu::AddDrink (string name, string desc, int id, double base_price, unsigned int volume)
 {
     items.push_back (new Drink(name, desc, id, base_price, volume));
 }
-bool Menu::ToggleItemStatus (int id)
+bool Menu::ModifyItemStatus (int id)
 {
     Item *item = FindItem (id);
     if (item)

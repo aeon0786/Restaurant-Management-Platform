@@ -12,8 +12,8 @@ class Menu
         ~Menu ();
         void AddFood (string, string, int, double, int);
 
-        void AddDrink (string, string, int, double, double);
-        bool ToggleItemStatus (int);
+        void AddDrink (string, string, int, double, unsigned int);
+        bool ModifyItemStatus (int);
 
         void DisplayMenu () const;
         Item* FindItem (int);

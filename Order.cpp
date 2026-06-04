@@ -1,7 +1,7 @@
 #include "Order.h"
 
 Order::Order (string n, OrderStatus stat) : name(n), status(stat) {}
-void Order::setRegisteredStatus () { status = OrderStatus::REGISTERED; }
+void Order::setOrderStatus (OrderStatus stat) { status = stat; }
 OrderStatus Order::getOrderStatus () const { return status; }
 void Order::AddItem (int id, Menu &m)
 {
@@ -43,3 +43,4 @@ void Order::DisplayOrder () const
     }
 }
 string Order::getOrderName() const { return name; }
+unsigned int Order::getOrderid () const { return id; }
