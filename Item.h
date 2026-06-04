@@ -22,8 +22,9 @@ class Item
         virtual double finalPrice () const = 0;
         virtual Item* clone() const = 0;
 
-        void setType (Item_type);
-        void setItemStatus (Item_Status);
+        void setType (const Item_type);
+        void setItemStatus (const Item_Status);
+        void setItemBase_price (const double);
 
         string getName () const;
         double getBase_price () const;

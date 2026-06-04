@@ -10,7 +10,7 @@ class Drink:public Item
     private:
         double volume;
     public:
-        Drink (string n, string desc, int i, double price, double vol)
+        Drink (string n, string desc, int i, double price, unsigned int vol)
         : Item(n, desc, i, price),
         volume (vol)
         { type = DRINK; }
