@@ -111,6 +111,14 @@ unsigned int Restaurant::getTime () const
 {
     return time;
 }
+void Restaurant::displayMenu () const
+{
+    menu->DisplayMenu();
+}
+Menu *Restaurant::getMenu () const
+{
+    return menu;
+}
 Order *Restaurant::findOrder (int id) const
 {
     for (const auto order : OrdersHistory)

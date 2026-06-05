@@ -72,20 +72,45 @@ OrderStatus RestaurantManager::findStatus()
 }
 void RestaurantManager::addFood (string name, string description, int id, double price, int prep_time)
 {
-    managedMenu->AddFood(name, description, id, price, prep_time);
+    if (restaurant && restaurant->getMenu())
+        restaurant->getMenu()->AddFood(name, description, id, price, prep_time);
 }
 void RestaurantManager::addDrink (string name, string description, int id, double price, unsigned int volume)
 {
-    managedMenu->AddDrink(name, description, id, price, volume);
+    if (restaurant && restaurant->getMenu())
+        restaurant->getMenu()->AddDrink(name, description, id, price, volume);
+    else 
+    {
+        cout << "Error: restaurant or menu not found." << endl;
+    }
 }
 void RestaurantManager::ModifyItem (int id)
 {
-    managedMenu->ModifyItemStatus(id);
+    if (restaurant && restaurant->getMenu())
+        restaurant->getMenu()->ModifyItemStatus(id);
+    else 
+    {
+        cout << "Error: restaurant or menu not found." << endl;
+    }
 }
 void RestaurantManager::updateItemPrice (int id, double newPrice)
 {
-    Item *item = managedMenu->FindItem(id);
-    item->setItemBase_price (newPrice);
+    if (restaurant && restaurant->getMenu()) 
+    {
+        Item *item = restaurant->getMenu()->FindItem(id);
+        if (item) 
+        {
+            item->setItemBase_price(newPrice);
+        } 
+        else 
+        {
+            cout << "Item not found!" << endl;
+        }
+    }
+    else 
+    {
+        cout << "Error: restaurant or menu not found." << endl;
+    }
 }
 void RestaurantManager::changeOrderStatus (Order &order, OrderStatus status)
 {
@@ -148,9 +173,9 @@ void RestaurantManager::displayDashboard ()
                 cout << "Enter Item ID to modify: ";
                 cin >> id;
                 
-                if (managedMenu) 
+                if (restaurant->getMenu()) 
                 {
-                    managedMenu->ModifyItemStatus(id);
+                    restaurant->getMenu()->ModifyItemStatus(id);
                 }
                 else 
                 {
@@ -184,12 +209,12 @@ void RestaurantManager::displayDashboard ()
                 int id;
                 double newPrice;
                 cout << "###  Change Item's price  ###" << endl;
-                managedMenu->DisplayMenu();
+                restaurant->getMenu()->DisplayMenu();
                 cout << "Enter Item's ID: ";
                 cin >> id;
                 cout << "Enter New Price: ";
                 cin >> newPrice;
-                Item *item = managedMenu->FindItem(id);
+                Item *item = restaurant->getMenu()->FindItem(id);
                 item->setItemBase_price(newPrice);
             }
             case 6:

@@ -10,7 +10,6 @@ class RestaurantManager:public User
 {
     private:
         Restaurant* restaurant;
-        Menu* managedMenu;
     public:
         RestaurantManager (string, string, Role);
 

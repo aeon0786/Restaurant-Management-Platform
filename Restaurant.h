@@ -15,6 +15,7 @@ class Restaurant
             phone_number,
             additional_Details;
         int ID;
+        Menu* menu;
         vector<Order *> OrdersHistory;
         Status status;
         unsigned int time;
@@ -48,6 +49,7 @@ class Restaurant
         int getID () const;
         bool getStatus () const;
         unsigned int getTime () const;
-
+        void displayMenu() const;
+        Menu *getMenu () const;
         Order *findOrder(int) const;
 }; 
