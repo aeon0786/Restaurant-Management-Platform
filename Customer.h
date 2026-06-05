@@ -12,8 +12,7 @@ class Customer:public User
         vector<Order> OrdersHistory;
         Order* currentOrder;
         double balance;
-    public:
-        Customer (string, string, Role);
+
         void addBalance (double);
         double getBalance () const;
         void createNewOrder (string);
@@ -23,5 +22,9 @@ class Customer:public User
         void handleNewOrder (const vector<Restaurant *> &);
         void handleWallet ();
         void ordering (Restaurant *);
+    public:
+        Customer (string, string, Role);
+        
         void displayDashboard (const vector<Restaurant *> &);
+        unsigned int totalOrders () const;
 };

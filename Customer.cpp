@@ -218,3 +218,4 @@ void Customer::displayDashboard(const vector<Restaurant *> &allRestaurants)
         }
     }
 }
+unsigned int Customer::totalOrders () const { return OrdersHistory.size(); }
