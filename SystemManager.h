@@ -1,0 +1,28 @@
+#pragma once 
+#include <vector>
+#include "User.h"
+#include "Customer.h"
+#include "RestaurantManager.h"
+#include "Restaurant.h"
+
+class SystemManager : public User
+{
+    private:
+        vector <Restaurant *> *allRestaurants;
+        vector <Customer *> *allCustomers;
+        vector <RestaurantManager *> *allManagers;
+
+        void registerNewRestaurant ();
+        void toggleRestaurantStatus ();
+        void displayGeneralReports ();
+        void displayUserActivity ();
+
+    public:
+        SystemManager (string, string, Role);
+
+        void setPlatformData(vector<Restaurant *> &, 
+                             vector<Customer *> &, 
+                             vector<RestaurantManager *> &);
+
+        void displayDashboard();
+};
