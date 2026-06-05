@@ -10,8 +10,6 @@ class RestaurantManager:public User
 {
     private:
         Restaurant* restaurant;
-    public:
-        RestaurantManager (string, string, Role);
 
         void add_Item (ITEM);
         OrderStatus findStatus();
@@ -21,5 +19,7 @@ class RestaurantManager:public User
         void updateItemPrice (int, double);
 
         void changeOrderStatus (Order &, OrderStatus);
+    public:
+        RestaurantManager (string, string, Role);
         void displayDashboard ();
 };
