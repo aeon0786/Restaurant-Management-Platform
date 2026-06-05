@@ -1,12 +1,15 @@
 #pragma once 
 #include <vector>
-#include "History_Of_Orders.h"
 #include "User.h"
+#include "Order.h"
+#include "Restaurant.h"
+
+inline string clear = "\033[2J\033[1;1H";
 
 class Customer:public User
 {
     private:
-        vector<List> orders;
+        vector<Order> OrdersHistory;
         Order* currentOrder;
         double balance;
     public:
@@ -16,4 +19,9 @@ class Customer:public User
         void createNewOrder (string);
         bool finalizeOrder ();
         void DisplayOrderHistory () const;
+
+        void handleNewOrder (const vector<Restaurant *> &);
+        void handleWallet ();
+        void ordering (Restaurant *);
+        void displayDashboard (const vector<Restaurant *> &);
 };
