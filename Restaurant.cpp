@@ -67,7 +67,7 @@ void Restaurant::setID (int id)
 }
 void Restaurant::setStatus (string &st)
 {
-    status = (st == "Active") ? Enable : Disable;
+    status = (st == "Active") ? Status::Enable : Status::Disable;
 }
 void Restaurant::setTime (unsigned int t)
 {
@@ -75,7 +75,7 @@ void Restaurant::setTime (unsigned int t)
 }
 void Restaurant::getInfo () const
 {
-    string status = (getStatus()) ? "Active" : "Inactive";
+    string status = (getStatus() == Status::Enable ) ? "Active" : "Inactive";
     cout << "---------- " << getName() << " Restaurant ----------" << endl
         << "Address : " << getAddress() << "ID: " << getID() << endl
         << "Phone : " << getPhoneNumber() << endl
@@ -103,7 +103,7 @@ int Restaurant::getID () const
 {
     return ID;
 }
-bool Restaurant::getStatus () const
+Status Restaurant::getStatus () const
 {
     return status;
 }
@@ -129,4 +129,30 @@ Order *Restaurant::findOrder (int id) const
         }
     }
     return nullptr;
+}
+unsigned int Restaurant::numOfOrders() const 
+{
+    unsigned int numOfOrders = 0;
+    if (OrdersHistory.empty()) 
+        cout << "The Order's History of " << this->getName()<< " is empty." << endl;
+        return;
+    for (const auto &order : OrdersHistory)
+    {
+        if (order->getOrderStatus() != OrderStatus::WAITING)
+            numOfOrders++;
+    }
+    return numOfOrders;
+}
+double Restaurant::totalSales () const 
+{
+    double totalSales = 0.0;
+    if (OrdersHistory.empty()) 
+        cout << "The Order's History of " << this->getName()<< " is empty." << endl;
+        return;
+    for (const auto &order : OrdersHistory)
+    {
+        if (order->getOrderStatus() != OrderStatus::WAITING)
+            totalSales += order->calculateTotalPrice() ;
+    }
+    return totalSales;
 }

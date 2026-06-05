@@ -6,7 +6,7 @@
 using namespace std;
 
 
-enum Status {Disable, Enable};
+enum class Status {Disable, Enable};
 class Restaurant
 {
     private:
@@ -26,7 +26,7 @@ class Restaurant
                     int = 0,
                     unsigned int = 0,
                     string = "", 
-                    Status = Disable
+                    Status = Status::Disable
                 );
         
         void addOrder (Order *);
@@ -47,9 +47,11 @@ class Restaurant
         string getPhoneNumber () const;
         string getAdditional () const;
         int getID () const;
-        bool getStatus () const;
+        Status getStatus () const;
         unsigned int getTime () const;
         void displayMenu() const;
         Menu *getMenu () const;
         Order *findOrder(int) const;
+        unsigned int numOfOrders () const;
+        double totalSales () const;
 }; 
