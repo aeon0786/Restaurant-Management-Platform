@@ -2,6 +2,7 @@
 #include <string>
 
 using namespace std;
+inline const string clear = "\033[2J\033[1;1H";
 
 enum class Role {Uncertain, Customer, RestaurantManager, SystemAdmin};
 class User
@@ -17,7 +18,7 @@ class User
         int getInternalId ();
         void setInternalId (int);
     public:
-        User (string = "Unknown User" , string, Role = Role::Uncertain);
+        User (string = "Unknown User" , string = "Unknown User", Role = Role::Uncertain);
         virtual ~User() = default;
         bool UpdatePass (string, string);
         bool UpdateUserName (string, string);
