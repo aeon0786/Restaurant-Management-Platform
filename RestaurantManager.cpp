@@ -16,7 +16,8 @@ void RestaurantManager::add_Item (ITEM i)
     cout << "Enter Food Name: ";
     getline(cin, name);
     cout << "Enter Description: ";
-    cin >> desc;
+    cin >> ws;
+    getline(cin, desc);
     cout << "Enter ID: ";
     cin >> id;
     cout << "Enter Base Price: ";
@@ -216,6 +217,7 @@ void RestaurantManager::displayDashboard ()
                 cin >> newPrice;
                 Item *item = restaurant->getMenu()->FindItem(id);
                 item->setItemBase_price(newPrice);
+                break;
             }
             case 6:
             {

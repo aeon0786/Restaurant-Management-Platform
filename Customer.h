@@ -4,8 +4,6 @@
 #include "Order.h"
 #include "Restaurant.h"
 
-inline string clear = "\033[2J\033[1;1H";
-
 class Customer:public User
 {
     private:
@@ -22,6 +20,7 @@ class Customer:public User
         void handleNewOrder (const vector<Restaurant *> &);
         void handleWallet ();
         void ordering (Restaurant *);
+        void infomationManagment ();
     public:
         Customer (string, string, Role);
         

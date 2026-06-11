@@ -1,5 +1,6 @@
 #include "Customer.h"
 #include <limits>
+#include <thread>
 #include <chrono>
 
 Customer::Customer (string name, string pass, Role r) 
@@ -171,6 +172,75 @@ void Customer::handleWallet()
             break;
     }
 }
+void Customer::infomationManagment ()
+{
+    int choice;
+    cout << clear
+         << "=========> INFORMATION MANAGMENT <========="
+         << "1.Change Name" << endl
+         << "2.Change User Name" << endl
+         << "3.Change User Password" << endl
+         << "0.To back" << endl
+         << "Your choice: ";
+         cin >> choice;
+    
+    switch (choice)
+    {
+    case 1 :
+    {
+        string newName;
+        cout << clear
+             << "Enter a new name: ";
+        cin >> ws;
+        getline (cin, newName);
+        this->setName (newName);
+        cout << "Name Updated.";
+        this_thread::sleep_for(chrono::milliseconds(50));
+        break;
+    }
+    case 2 :
+    {
+        string newUName;
+        cout << clear
+             << "Enter a new User Name: ";
+        cin >> ws;
+        getline (cin, newUName);
+        this->UpdateUserName (this->get_UserName(), newUName);
+        cout << "User Name Updated.";
+        this_thread::sleep_for(chrono::milliseconds(50));
+        break;
+    }
+    case 3 :
+    {
+        string User_pass, old_pass;
+        cout << clear
+             << "Enter Your Password: ";
+        cin >> ws;
+        getline (cin, old_pass);
+
+        cout << "Enter a new User Password: ";
+        cin >> ws;
+        getline (cin, User_pass);
+
+        bool updated = this->UpdateUserName (old_pass, User_pass);
+        if (updated) cout << "User's Password Updated.";
+        else 
+        {
+            while (updated)
+            {
+                cout << "Incorrect Password\nTry again: ";
+                cin >> ws;
+                getline (cin, old_pass);
+                updated = this->UpdateUserName (old_pass, User_pass);
+            }
+        }
+        this_thread::sleep_for(chrono::milliseconds(50));
+        break;
+    }
+    default:
+        break;
+    }
+}
 void Customer::displayDashboard(const vector<Restaurant *> &allRestaurants)
 {
     bool loggedIn = true;
@@ -188,7 +258,7 @@ void Customer::displayDashboard(const vector<Restaurant *> &allRestaurants)
             << "2.View Order History" << endl
             << "3.Manage Wallet" << endl
             << "4.User information management" << endl
-            << "5. Logout" << endl
+            << "5.Logout" << endl
             << "=================================================" << endl
             << "Enter your choice: ";
         
@@ -213,6 +283,12 @@ void Customer::displayDashboard(const vector<Restaurant *> &allRestaurants)
             break;
         case 3 :
             this->handleWallet();
+        case 4 :
+            this->infomationManagment();
+        case 5 :
+            loggedIn = false;
+            cout << clear;
+            break;
         default:
             break;
         }

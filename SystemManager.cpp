@@ -3,7 +3,7 @@
 #include "SystemManager.h"
 
 
-SystemManager::SystemManager(string user_name, string password, Role role) : User(name, password, role) {}
+SystemManager::SystemManager(string user_name, string password, Role role) : User(user_name, password, role) {}
 void SystemManager::setPlatformData (vector <Restaurant *> &Restaurants,
                                      vector <Customer *> &Customers,
                                      vector <RestaurantManager *> &Managers)
@@ -14,7 +14,7 @@ void SystemManager::setPlatformData (vector <Restaurant *> &Restaurants,
 }
 void SystemManager::displayDashboard ()
 {
-    if (allCustomers || allManagers || allManagers)
+    if (!allCustomers || !allManagers || allRestaurants)
     {
         cout << "Error: Platform data vectors are not linked to System Manager!" << endl;
         return;
@@ -82,7 +82,7 @@ void SystemManager::registerNewRestaurant()
     getline(cin, r_details);
     cout << "Is " << r_name << " Restaurant active? (y/n): ";
     cin >> y_n;
-    while (y_n != 'y' || y_n != 'n')
+    while (y_n != 'y' && y_n != 'n')
     {
         cout << "Invalid Iput.Try Again: ";
         cin >> y_n;
@@ -102,10 +102,10 @@ void SystemManager::registerNewRestaurant()
     if (!allRestaurants->empty())
     {
         Restaurant *last = allRestaurants->back();
-        r_id = last->getID();
+        r_id = last->getID() + 1;
     }
 
-    Restaurant *newRestaurant = new Restaurant(r_name, r_address, r_phone, r_time, r_id, r_details, r_status);
+    Restaurant *newRestaurant = new Restaurant(r_name, r_address, r_phone, r_id, r_time, r_details, r_status);
 
     allRestaurants->push_back(newRestaurant);
 
@@ -129,8 +129,8 @@ void SystemManager::toggleRestaurantStatus ()
         cout << left << setw(10) << rest->getID()
              << " | " << left << setw(20) << rest->getName()
              << " | " << left << setw(10) << statusSTR << endl;
-
-        int targetId;
+    }
+    int targetId;
     cout << "\nEnter Restaurant ID to toggle status (0 to cancel): ";
     cin >> targetId;
 
@@ -149,8 +149,6 @@ void SystemManager::toggleRestaurantStatus ()
 
     if (!found) {
         cout << "[Error] Restaurant with ID " << targetId << " not found!" << endl;
-    }
-
     }
 }
 void SystemManager::displayGeneralReports ()

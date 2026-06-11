@@ -4,7 +4,7 @@
 #include "Order.h"
 #include "Restaurant.h"
 
-inline string clear = "\033[2J\033[1;1H";
+
 enum class ITEM {FOOD, DRINK};
 class RestaurantManager:public User
 {
