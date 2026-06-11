@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Item.h"
 
-Item::Item (string n, string des, int i, double base_prc, Item_Status st = UNAVAILABLE) 
+Item::Item (string n, string des, int i, double base_prc, Item_Status st) 
     : name(n),
     description(des),
     itemID (i),

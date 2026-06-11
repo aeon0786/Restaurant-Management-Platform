@@ -17,6 +17,7 @@ void Menu::AddDrink (string name, string desc, int id, double base_price, unsign
 }
 bool Menu::ModifyItemStatus (int id)
 {
+    bool modifyed = false;
     Item *item = FindItem (id);
     if (item)
     {
@@ -24,17 +25,20 @@ bool Menu::ModifyItemStatus (int id)
         {
             item->setItemStatus(UNAVAILABLE);
             cout << item->getName() << " is now Unavailable." << endl;
+            modifyed = true;
         }
         else
         {
             item->setItemStatus(AVAILABLE);
             cout << item->getName() << " is now Available." << endl;
+            modifyed = true;
         }
     }
     else 
     {
         cout << "Item not found!" << endl;
     }
+    return modifyed;
 }
 void Menu::DisplayMenu () const
 {

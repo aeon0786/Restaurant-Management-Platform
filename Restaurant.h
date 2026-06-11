@@ -28,6 +28,7 @@ class Restaurant
                     string = "", 
                     Status = Status::Disable
                 );
+        ~Restaurant();
         
         void addOrder (Order *);
         void removeOrder(unsigned int);

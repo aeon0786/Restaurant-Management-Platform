@@ -4,6 +4,7 @@
 
 Restaurant::Restaurant (string res_name, string res_address, string res_phone, int res_id, unsigned int pre_time, string exp, Status res_status)
 {
+    menu = new Menu();
     name = res_name;
     address = res_address;
     phone_number = res_phone;
@@ -12,6 +13,7 @@ Restaurant::Restaurant (string res_name, string res_address, string res_phone, i
     additional_Details = exp;
     status = res_status;
 }
+Restaurant::~Restaurant () { delete menu; }
 void Restaurant::addOrder (Order *order)
 {
     if (order != nullptr)
@@ -33,7 +35,7 @@ void Restaurant::sortOrders ()
 {
     std::sort(OrdersHistory.begin(), OrdersHistory.end(), [](Order* a, Order* b)
     {
-        a->getOrderStatus() < b->getOrderStatus();
+        return a->getOrderStatus() < b->getOrderStatus();
     });
     cout << "Orders history sorted by Status successfully." << endl;
 }
@@ -135,7 +137,7 @@ unsigned int Restaurant::numOfOrders() const
     unsigned int numOfOrders = 0;
     if (OrdersHistory.empty()) 
         cout << "The Order's History of " << this->getName()<< " is empty." << endl;
-        return;
+        return 0;
     for (const auto &order : OrdersHistory)
     {
         if (order->getOrderStatus() != OrderStatus::WAITING)
@@ -148,7 +150,7 @@ double Restaurant::totalSales () const
     double totalSales = 0.0;
     if (OrdersHistory.empty()) 
         cout << "The Order's History of " << this->getName()<< " is empty." << endl;
-        return;
+        return 0;
     for (const auto &order : OrdersHistory)
     {
         if (order->getOrderStatus() != OrderStatus::WAITING)
