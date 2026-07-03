@@ -3,6 +3,7 @@
 #include <vector>
 #include "Order.h"
 
+class RestaurantManager;
 using namespace std;
 
 
@@ -15,6 +16,7 @@ class Restaurant
             phone_number,
             additional_Details;
         int ID;
+        RestaurantManager *manager = nullptr;
         Menu* menu;
         vector<Order *> OrdersHistory;
         Status status;
@@ -41,7 +43,9 @@ class Restaurant
         void setID (int);
         void setStatus (string &);
         void setTime (unsigned int);
+        void setManager (RestaurantManager *);
 
+        RestaurantManager *getManager () const;
         void getInfo () const;
         string getName () const;
         string getAddress () const;

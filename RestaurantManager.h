@@ -9,7 +9,9 @@ enum class ITEM {FOOD, DRINK};
 class RestaurantManager:public User
 {
     private:
-        Restaurant* restaurant;
+        Restaurant* restaurant = nullptr;
+
+        void leaveRestaurant();
 
         void add_Item (ITEM);
         OrderStatus findStatus();
@@ -17,9 +19,11 @@ class RestaurantManager:public User
         void addDrink (string, string, int, double, unsigned int);
         void ModifyItem (int id);
         void updateItemPrice (int, double);
-
+        
         void changeOrderStatus (Order &, OrderStatus);
     public:
         RestaurantManager (string, string, Role);
+        void setRestaurant (Restaurant *);
+        Restaurant* getRestaurant() const;
         void displayDashboard ();
 };

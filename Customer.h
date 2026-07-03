@@ -13,6 +13,7 @@ class Customer:public User
 
         void addBalance (double);
         double getBalance () const;
+        Order *getCart () const;
         void createNewOrder (string);
         bool finalizeOrder ();
         void DisplayOrderHistory () const;
@@ -20,7 +21,6 @@ class Customer:public User
         void handleNewOrder (const vector<Restaurant *> &);
         void handleWallet ();
         void ordering (Restaurant *);
-        void infomationManagment ();
     public:
         Customer (string, string, Role);
         

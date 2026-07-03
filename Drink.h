@@ -18,7 +18,7 @@ class Drink:public Item
         void printInfo () const override
         {
             string stat = (status == AVAILABLE) ? "Available" : "Unavailable";
-            cout << "Food : " << name << " | Price : " << finalPrice ()
+            cout << "Drink : " << name << " | Price : " << finalPrice ()
                 << "\nVolume : " << volume << " ml | Status : " << stat << endl
                 << "Description : " << description << endl;
         }

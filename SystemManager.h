@@ -16,6 +16,7 @@ class SystemManager : public User
         void toggleRestaurantStatus ();
         void displayGeneralReports ();
         void displayUserActivity ();
+        void assignManagerToRestaurant();
 
     public:
         SystemManager (string, string, Role);

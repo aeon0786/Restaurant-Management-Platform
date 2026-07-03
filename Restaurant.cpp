@@ -1,6 +1,7 @@
 #include <iostream>
 #include <algorithm>
 #include "Restaurant.h"
+#include "RestaurantManager.h"
 
 Restaurant::Restaurant (string res_name, string res_address, string res_phone, int res_id, unsigned int pre_time, string exp, Status res_status)
 {
@@ -17,15 +18,18 @@ Restaurant::~Restaurant () { delete menu; }
 void Restaurant::addOrder (Order *order)
 {
     if (order != nullptr)
+    {
         OrdersHistory.push_back(order);
         sortOrders();
+    }
 }
 void Restaurant::removeOrder(unsigned int id) 
 {
     for (auto it = OrdersHistory.begin(); it != OrdersHistory.end(); ++it) {
         if ((*it)->getOrderid() == id) {
-            OrdersHistory.erase(it);
             cout << "Order '" << (*it)->getOrderName() << "' removed from restaurant history." << endl;
+            OrdersHistory.erase(it);
+
             return;
         }
     }
@@ -74,6 +78,14 @@ void Restaurant::setStatus (string &st)
 void Restaurant::setTime (unsigned int t)
 {
     time = t;
+}
+void Restaurant::setManager (RestaurantManager *mgr)
+{
+    manager = mgr;
+}
+RestaurantManager *Restaurant::getManager () const
+{
+    return manager;
 }
 void Restaurant::getInfo () const
 {
@@ -136,8 +148,10 @@ unsigned int Restaurant::numOfOrders() const
 {
     unsigned int numOfOrders = 0;
     if (OrdersHistory.empty()) 
+    {
         cout << "The Order's History of " << this->getName()<< " is empty." << endl;
         return 0;
+    }
     for (const auto &order : OrdersHistory)
     {
         if (order->getOrderStatus() != OrderStatus::WAITING)
@@ -149,8 +163,10 @@ double Restaurant::totalSales () const
 {
     double totalSales = 0.0;
     if (OrdersHistory.empty()) 
+    {
         cout << "The Order's History of " << this->getName()<< " is empty." << endl;
         return 0;
+    }
     for (const auto &order : OrdersHistory)
     {
         if (order->getOrderStatus() != OrderStatus::WAITING)

@@ -57,14 +57,17 @@ int main ()
                     {
                         cout << "Login failed... \nDo you want to try again? [y/n]: ";
                         cin >> choice;
-                        if (choice == 'n' || 'N')
+                        if (choice == 'n' || choice == 'N')
                         {
                             break;
                         }
                     }
                 }
             
-                displayDaushboards (loggedUser);
+                if (loggedUser != nullptr)
+                {
+                    displayDaushboards(loggedUser);
+                }
                 break;
             }
             case 2 :
@@ -186,7 +189,7 @@ bool Registeration (const string &name, const string &user_name, const string &p
                      << "Do you want to try again? [y/n] : ";
             
                 cin >> choice;
-                if (choice == 'n' || 'N')
+                if (choice == 'n' || choice == 'N')
                 {
                     flag = false;
                     break;
@@ -203,7 +206,7 @@ User* Login ()
     string user_name, pass;
 
     cout << clear
-         << "---------------< LOGIN >---------------"
+         << "---------------< LOGIN >---------------" << endl
          << "Username : ";
     cin >> ws; 
     getline (cin, user_name);
@@ -220,7 +223,6 @@ User* Login ()
             cout << clear
                  << "Welcome " << admin->getName() << "!," << "You have a tough job ahead of you!." << endl;
             this_thread::sleep_for(chrono::seconds(1));
-            admin->displayDashboard();
             loggedIn = true;
             return admin;
         }
@@ -234,7 +236,6 @@ User* Login ()
                 cout << clear
                      << "Welcome Manager!" << endl;
                 this_thread::sleep_for(chrono::seconds(1));
-                mgr->displayDashboard();
                 loggedIn = true;
                 return mgr;
             }
@@ -248,9 +249,8 @@ User* Login ()
             if (customer->get_UserName() == user_name && customer->UpdatePass(pass, pass)) 
             {
                 cout << clear
-                     << "Welcome " << customer->getName() << "!وHave a good shopping... " << endl;
+                     << "Welcome " << customer->getName() << "Have a good shopping! ... " << endl;
                 this_thread::sleep_for(chrono::seconds(1));
-                customer->displayDashboard(global_restaurants);
                 loggedIn = true;
                 return customer;
             }
@@ -285,6 +285,7 @@ void displayDaushboards (User * user)
             this_thread::sleep_for(chrono::seconds(1));
             manager->displayDashboard();
         }
+        break;
     }
     case Role::Customer : 
     {
@@ -296,6 +297,7 @@ void displayDaushboards (User * user)
             this_thread::sleep_for(chrono::seconds(1));
             customer->displayDashboard(global_restaurants);
         }
+        break;
     }
     default:
         cout << clear

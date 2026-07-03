@@ -6,14 +6,33 @@
 
 
 RestaurantManager::RestaurantManager (string name, string pass, Role role) : User(name, pass, role) {}
+void RestaurantManager::setRestaurant (Restaurant *r) { restaurant = r; }
+Restaurant* RestaurantManager::getRestaurant() const { return restaurant; }
+void RestaurantManager::leaveRestaurant ()
+{
+    if (restaurant == nullptr) {
+        cout << "You are not managing any restaurant." << endl;
+        return;
+    }
+
+    cout << "Are you sure you want to leave " << restaurant->getName() << "? (y/n): ";
+    char c;
+    cin >> c;
+    if (c == 'y' || c == 'Y') {
+        restaurant->setManager(nullptr);
+        restaurant = nullptr;
+        cout << "[Success] You have left the restaurant." << endl;
+    }
+}
 void RestaurantManager::add_Item (ITEM i)
 {
     string name, desc;
     int id, x;
     double price;
                 
-    cout << "\n--- Add New Food ---" << endl;
-    cout << "Enter Food Name: ";
+    cout << "\n--- Add New Item ---" << endl;
+    cout << "Enter Item Name: ";
+    cin >> ws;
     getline(cin, name);
     cout << "Enter Description: ";
     cin >> ws;
@@ -22,7 +41,7 @@ void RestaurantManager::add_Item (ITEM i)
     cin >> id;
     cout << "Enter Base Price: ";
     cin >> price;
-    cout << "Enter Prep Time (mins): ";
+    cout << "Enter Prep Time (mins)/Enter Volume for Drinks (ml): ";
     cin >> x;
             
     if (i == ITEM::FOOD) addFood(name, desc, id, price, x);
@@ -134,13 +153,15 @@ void RestaurantManager::displayDashboard ()
             cout << "\n       MANAGER DASHBOARD";
         }
         cout << "\n=================================================" << endl
-            << "1. Add New Food to Menu" << endl
-            << "2.Add New Drink to Menu" << endl
-            << "3.Modify Item Status (Available/Unavailable)" << endl
-            << "4.Change Order Status" << endl
-            << "5.Update Prices" << endl
-            << "6. View History Of Orders" << endl
-            << "7. Logout" << endl
+            << "1. Leave Restaurant" << endl
+            << "2. Add New Food to Menu" << endl
+            << "3. Add New Drink to Menu" << endl
+            << "4. Modify Item Status (Available/Unavailable)" << endl
+            << "5. Change Order Status" << endl
+            << "6. Update Prices" << endl
+            << "7. View History Of Orders" << endl
+            << "8.User information management" << endl
+            << "9. Logout" << endl
             << "=================================================" << endl
             << "Enter your choice: ";
         
@@ -154,20 +175,40 @@ void RestaurantManager::displayDashboard ()
             cout << "Invalid input. Please enter a valid number." << endl;
             continue;
         }
+        while (choice >= 2 && choice <= 7 && restaurant == nullptr) 
+        {
+            cout << "You are not linked to any restaurant yet." << endl
+                 << "Please use option 1 to link to a restaurant first." << endl;
+            cin >> choice;
+            cout << clear;
+
+            if(cin.fail()) 
+            {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << "Invalid input. Please enter a valid number." << endl;
+                continue;
+            }
+        }
 
         switch (choice) 
         {
             case 1:
             {
-                add_Item(ITEM::FOOD);
+                leaveRestaurant ();
                 break;
             }
             case 2:
             {
-                add_Item(ITEM::DRINK);
+                add_Item(ITEM::FOOD);
                 break;
             }
             case 3:
+            {
+                add_Item(ITEM::DRINK);
+                break;
+            }
+            case 4:
             {
                 int id;
                 cout << "\n--- Modify Item Status ---" << endl;
@@ -184,7 +225,7 @@ void RestaurantManager::displayDashboard ()
                 }
                 break;
             }
-            case 4:
+            case 5:
             {
                 int id, status_str;
                 OrderStatus st;
@@ -205,7 +246,7 @@ void RestaurantManager::displayDashboard ()
                 }
                 break;
             }
-            case 5:
+            case 6:
             {
                 int id;
                 double newPrice;
@@ -216,10 +257,17 @@ void RestaurantManager::displayDashboard ()
                 cout << "Enter New Price: ";
                 cin >> newPrice;
                 Item *item = restaurant->getMenu()->FindItem(id);
-                item->setItemBase_price(newPrice);
+                if (item != nullptr) 
+                {
+                    item->setItemBase_price(newPrice);
+                } 
+                else 
+                {
+                    cout << "Item not found!" << endl;
+                }
                 break;
             }
-            case 6:
+            case 7:
             {
                 if (restaurant) {
                     cout << "\n--- History Of Orders ---" << endl;
@@ -230,14 +278,23 @@ void RestaurantManager::displayDashboard ()
                     cout << "Error: Cannot access restaurant database." << endl;
                 }
                 break;
-            case 7:
+            }
+            case 8:
+            {
+                cout << clear;
+                this->infomationManagment();
+                break; 
+            }
+            case 9:
+            {
                 cout << "Logging out of Manager Dashboard..." << endl;
-                std::this_thread::sleep_for(std::chrono::seconds(2));
+                this_thread::sleep_for(chrono::seconds(2));
                 loggedIn = false;
                 break;
+            }
             default:
                 cout << "Invalid choice!\n";
-            }
+                break;
         }
         cout << clear;
     }

@@ -1,20 +1,39 @@
 #include "Order.h"
 
-Order::Order (string n, OrderStatus stat) : name(n), status(stat) {}
+unsigned int Order::nextId = 1;
+
+Order::Order (string n, OrderStatus stat) : name(n), status(stat) { id = nextId++; }
+Order::Order(const Order& other)
+    : name(other.name), id(other.id), status(other.status) {
+    for (auto item : other.order)
+        order.push_back(item->clone());
+}
+Order::~Order() {
+    for (auto item : order)
+        delete item;
+}
+
 void Order::setOrderStatus (OrderStatus stat) { status = stat; }
 OrderStatus Order::getOrderStatus () const { return status; }
-void Order::AddItem (int id, Menu &m)
+bool Order::AddItem (int id, Menu &m)
 {
     Item *item = m.FindItem(id);
-    if (item != nullptr) order.push_back(item->clone());
-    else 
+    if (item == nullptr)
     {
         cout << "This item was not on the menu." << endl;
+        return false;
     }
+    if (item->getItem_Status() != AVAILABLE)
+    {
+        cout << item->getName() << " is currently unavailable and cannot be ordered." << endl;
+        return false;
+    }
+    order.push_back(item->clone());
+    return true;
 }
 void Order::MoveItem (int id)
 {
-    for (const auto &it = order.begin(); it != order.end(); ++(*it)) 
+    for (auto it = order.begin(); it != order.end(); ++it)
     {
         if ((*it)->getItem_ID() == id) 
         {
@@ -27,7 +46,7 @@ void Order::MoveItem (int id)
 }
 double Order::calculateTotalPrice () const
 {
-    double total;
+    double total = 0.0 ;
     for (const auto item : order)
     {
         total += item->finalPrice();

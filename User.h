@@ -8,24 +8,30 @@ enum class Role {Uncertain, Customer, RestaurantManager, SystemAdmin};
 class User
 {
     private:
-        string password,
-            username,
+        string username,
+            password,
             phone_number;
         int id;
     protected:
         string name;
         Role role;
-        int getInternalId ();
-        void setInternalId (int);
+        int getInternalId () { return id; }
+        void setInternalId (int new_id) { id = new_id; }
     public:
         User (string = "Unknown User" , string = "Unknown User", Role = Role::Uncertain);
         virtual ~User() = default;
+
         bool UpdatePass (string, string);
         bool UpdateUserName (string, string);
         bool UpdatePhoneNumber (string, string);
         void setName (string);
 
-        string get_UserName () const;
-        string getName () const;
-        Role getRole () const;
+        string get_UserName () const { return username; }
+        string getName () const { return name; }
+        string getUserPassword () const { return password; }
+        Role getRole () const { return role; }
+        virtual double getBalance () const { return 0.0; }
+        void infomationManagment();
+        string getphoneNumber () const { return phone_number; }
+        string getUser () const;
 };

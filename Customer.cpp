@@ -1,7 +1,6 @@
 #include "Customer.h"
 #include <limits>
-#include <thread>
-#include <chrono>
+
 
 Customer::Customer (string name, string pass, Role r) 
     : User(name, pass, r),
@@ -11,7 +10,7 @@ Customer::Customer (string name, string pass, Role r)
 void Customer::DisplayOrderHistory () const
 {
     cout << "~~~~~~~~~~~  THANK YOU " << this->getName() << "!  ~~~~~~~~~~~" << endl;
-    for (const auto order : OrdersHistory)
+    for (const auto &order : OrdersHistory)
     {
         order.DisplayOrder ();
         cout << "---------------------------------------------------------" << endl;
@@ -20,7 +19,7 @@ void Customer::DisplayOrderHistory () const
 }
 void Customer::addBalance (double amount) { balance += amount; }
 double Customer::getBalance () const { return balance; }
-
+Order *Customer::getCart () const { return currentOrder; }
 void Customer::createNewOrder (string name) 
 {
     if (currentOrder) delete currentOrder;
@@ -29,8 +28,10 @@ void Customer::createNewOrder (string name)
 bool Customer::finalizeOrder ()
 {
     if (!currentOrder)
+    {
         cout << "There are no orders in the cart." << endl;
         return false;
+    }
     
     double total = currentOrder->calculateTotalPrice();
     if (balance >= total)
@@ -38,6 +39,7 @@ bool Customer::finalizeOrder ()
         balance -= total;
         currentOrder->setOrderStatus();
         OrdersHistory.push_back(*currentOrder);
+        delete currentOrder;
         currentOrder = nullptr;
         return true;
     }
@@ -62,10 +64,11 @@ void Customer::ordering (Restaurant *Choice)
         Choice->displayMenu();
         
         cout << "\nOptions:" << endl
-            << "1. Add Item by ID" << endl
-            << "2. View Current Cart Total" << endl
-            << "3. Finalize & Pay" << endl
-            << "4. Cancel Order" << endl
+            << "1. Add Item to Cart" << endl
+            << "2. Remove Item from Cart" << endl
+            << "3. View Current Cart Total" << endl
+            << "4. Finalize & Pay" << endl
+            << "5. Cancel Order" << endl
             << "Select: ";
         
         int action;
@@ -75,17 +78,46 @@ void Customer::ordering (Restaurant *Choice)
         {
             case 1:
             {
+                Choice->displayMenu();
                 int itemId;
                 cout << "Enter Item ID to add: ";
                 cin >> itemId;
-                currentOrder->AddItem(itemId, *(Choice->getMenu()));
-                cout << "Item " << Choice->getMenu()->FindItem(itemId)->getName() << " added to cart!" << endl;
+                Item* found = Choice->getMenu()->FindItem(itemId);
+
+                if (found) 
+                {
+                    currentOrder->AddItem(itemId, *(Choice->getMenu()));
+                    cout << "Item " << found->getName() << " added!" << endl;
+                } 
+                else
+                {
+                    cout << "Item not found!" << endl;
+                }
                 break;
             }
             case 2:
+            {
+                this->getCart()->DisplayOrder();
+                int itemId;
+                cout << "Enter Item ID to Remove: ";
+                cin >> itemId;
+                Item* found = Choice->getMenu()->FindItem(itemId);
+                
+                if (found) 
+                {
+                    currentOrder->MoveItem(itemId);
+                    cout << "Item " << found->getName() << " removed!" << endl;
+                } 
+                else
+                {
+                    cout << "Item not found!" << endl;
+                }
+                break;
+            }
+            case 3:
                 cout << "Current Total: $" << currentOrder->calculateTotalPrice() << endl;
                 break;
-            case 3:
+            case 4:
                 cout << "\n--- Checkout ---" << endl;
                 if (finalizeOrder()) 
                 {
@@ -97,9 +129,10 @@ void Customer::ordering (Restaurant *Choice)
                     cout << "Payment failed. Please check your balance." << endl;
                 }
                 break;
-            case 4:
+            case 5:
                 cout << "Order cancelled." << endl;
                 delete currentOrder;
+                currentOrder = nullptr;
                 ordering = false;
                 break;
         }
@@ -113,7 +146,7 @@ void Customer::handleNewOrder (const vector <Restaurant *> &allRestaurants)
         cout << "No restaurants available right now." << endl;
         return;
     }
-    for (size_t i; i < allRestaurants.size() ; i++)
+    for (size_t i = 0; i < allRestaurants.size() ; i++)
     {
         cout << i +1 << "." << allRestaurants[i]->getName() << endl;
     }
@@ -125,7 +158,7 @@ void Customer::handleNewOrder (const vector <Restaurant *> &allRestaurants)
     {
         cout << "Invalid choice!\n Try Again." << endl;
         bool input = false;
-        while (input)
+        while (!input)
         {
             cin >> restChoice;
             if (restChoice <= allRestaurants.size()) input = true;
@@ -134,6 +167,23 @@ void Customer::handleNewOrder (const vector <Restaurant *> &allRestaurants)
     if (restChoice == 0) return;
 
     Restaurant* selectedRest = allRestaurants[restChoice - 1];
+    while (selectedRest->getStatus() == Status::Disable)
+    {
+        cout << "Restaurant is Inactive." << endl
+             << "choose another restaurant: "
+             << "Enter Your Choice (0 to cancell): ";
+        cin >> restChoice;
+        if (restChoice == 0) return;
+    
+        while (restChoice < 1 || restChoice > (int)allRestaurants.size())
+        {
+            cout << "Invalid choice. Try again (0 to cancell): ";
+            cin >> restChoice;
+            if (restChoice == 0) return;
+        }
+
+        selectedRest = allRestaurants[restChoice - 1];
+    }
     ordering(selectedRest);
 }
 void Customer::handleWallet()
@@ -150,7 +200,7 @@ void Customer::handleWallet()
     if (action > 2 || action < 0)
     {
         bool flag = false;
-        while (flag)
+        while (!flag)
         {
             cout << "Invalid inpupt\nTry Again: ";
             cin >> action;
@@ -170,75 +220,6 @@ void Customer::handleWallet()
         case 2 :
             cout << "Operation Cancelled." << endl;
             break;
-    }
-}
-void Customer::infomationManagment ()
-{
-    int choice;
-    cout << clear
-         << "=========> INFORMATION MANAGMENT <========="
-         << "1.Change Name" << endl
-         << "2.Change User Name" << endl
-         << "3.Change User Password" << endl
-         << "0.To back" << endl
-         << "Your choice: ";
-         cin >> choice;
-    
-    switch (choice)
-    {
-    case 1 :
-    {
-        string newName;
-        cout << clear
-             << "Enter a new name: ";
-        cin >> ws;
-        getline (cin, newName);
-        this->setName (newName);
-        cout << "Name Updated.";
-        this_thread::sleep_for(chrono::milliseconds(50));
-        break;
-    }
-    case 2 :
-    {
-        string newUName;
-        cout << clear
-             << "Enter a new User Name: ";
-        cin >> ws;
-        getline (cin, newUName);
-        this->UpdateUserName (this->get_UserName(), newUName);
-        cout << "User Name Updated.";
-        this_thread::sleep_for(chrono::milliseconds(50));
-        break;
-    }
-    case 3 :
-    {
-        string User_pass, old_pass;
-        cout << clear
-             << "Enter Your Password: ";
-        cin >> ws;
-        getline (cin, old_pass);
-
-        cout << "Enter a new User Password: ";
-        cin >> ws;
-        getline (cin, User_pass);
-
-        bool updated = this->UpdateUserName (old_pass, User_pass);
-        if (updated) cout << "User's Password Updated.";
-        else 
-        {
-            while (updated)
-            {
-                cout << "Incorrect Password\nTry again: ";
-                cin >> ws;
-                getline (cin, old_pass);
-                updated = this->UpdateUserName (old_pass, User_pass);
-            }
-        }
-        this_thread::sleep_for(chrono::milliseconds(50));
-        break;
-    }
-    default:
-        break;
     }
 }
 void Customer::displayDashboard(const vector<Restaurant *> &allRestaurants)
@@ -275,16 +256,22 @@ void Customer::displayDashboard(const vector<Restaurant *> &allRestaurants)
         switch (choice)
         {
         case 1 :
+            cout << clear;
             this->handleNewOrder(allRestaurants);
             break;
         case 2 :
-            cout << "--- User " << this->get_UserName() << "'s Order History ---" << endl;
+            cout << clear
+                 << "--- User " << this->get_UserName() << "'s Order History ---" << endl;
             this->DisplayOrderHistory();
             break;
         case 3 :
+            cout << clear;
             this->handleWallet();
+            break;
         case 4 :
+            cout << clear;
             this->infomationManagment();
+            break;
         case 5 :
             loggedIn = false;
             cout << clear;

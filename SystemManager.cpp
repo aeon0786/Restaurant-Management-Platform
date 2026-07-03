@@ -14,7 +14,7 @@ void SystemManager::setPlatformData (vector <Restaurant *> &Restaurants,
 }
 void SystemManager::displayDashboard ()
 {
-    if (!allCustomers || !allManagers || allRestaurants)
+    if (!allCustomers || !allManagers || !allRestaurants)
     {
         cout << "Error: Platform data vectors are not linked to System Manager!" << endl;
         return;
@@ -23,16 +23,18 @@ void SystemManager::displayDashboard ()
     bool loggedIn = true;
     while (loggedIn)
     {
-        cout << "\n=================================================";
-        cout << "\n             SYSTEM ADMIN DASHBOARD";
-        cout << "\n=================================================" << endl;
-        cout << "1. Register New Restaurant" << endl;
-        cout << "2. Toggle Restaurant Status (Enable/Disable)" << endl;
-        cout << "3. View General Platform Reports (Sales & Orders)" << endl;
-        cout << "4. View Users Activity Report" << endl;
-        cout << "5. Logout" << endl;
-        cout << "=================================================" << endl;
-        cout << "Enter your choice: ";
+        cout << "\n================================================="
+             << "\n             SYSTEM ADMIN DASHBOARD"
+             << "\n=================================================" << endl
+             << "1. Register New Restaurant" << endl
+             << "2. Toggle Restaurant Status (Enable/Disable)" << endl
+             << "3. Assign Manager to Restaurant" << endl
+             << "4. View General Platform Reports (Sales & Orders)" << endl
+             << "5. View Users Activity Report" << endl
+             << "6. User information management" << endl
+             << "7. Logout" << endl
+             << "=================================================" << endl
+             << "Enter your choice: ";
 
         int choice;
         cin >> choice;
@@ -47,17 +49,25 @@ void SystemManager::displayDashboard ()
                 toggleRestaurantStatus();
                 break;
             case 3:
-                displayGeneralReports();
+                assignManagerToRestaurant();
                 break;
             case 4:
-                displayUserActivity();
+                displayGeneralReports();
                 break;
             case 5:
-                cout << "Logging out of Admin Dashboard..." << endl;
+                displayUserActivity();
+                break;
+            case 6:
+                this->infomationManagment();
+                break;
+            case 7:
+                cout << clear
+                     << "Logging out of Admin Dashboard..." << endl;
                 loggedIn = false;
                 break;
             default:
-                cout << "Invalid choice! Please try again." << endl;
+                cout << clear
+                     << "Invalid choice! Please try again." << endl;
         }
     }
 }
@@ -111,6 +121,76 @@ void SystemManager::registerNewRestaurant()
 
     cout << "\n[Success] Restaurant '" << r_name << "' registered successfully." << endl;
 }
+void SystemManager::assignManagerToRestaurant()
+{
+    if (allRestaurants->empty() || allManagers->empty()) {
+        cout << "No restaurants or managers available." << endl;
+        return;
+    }
+
+    cout << "\n--- Restaurants without a Manager ---" << endl;
+    for (auto& r : *allRestaurants) {
+        string mgr = (r->getManager() != nullptr) ? r->getManager()->getName() : "None";
+        cout << "ID: " << r->getID() << " | " << r->getName()
+             << " | Manager: " << mgr << endl;
+    }
+
+    Restaurant* targetRest = nullptr;
+    bool found = false;
+
+    while (!found)
+    {
+        cout << "Enter Restaurant ID (0 to cancel): ";
+        int rId;
+        cin >> rId;
+        if (rId == 0) { return;}
+
+        for (auto& r : *allRestaurants) 
+        {
+            if (r->getID() == rId) 
+            { 
+                targetRest = r;
+                found = true;
+                break; 
+            }
+        }
+        if (!targetRest)
+        {
+            cout << "Restaurant not found." << endl; 
+        }
+    }
+
+    if (targetRest->getManager() != nullptr) 
+    {
+        cout << "This restaurant already has a manager: "
+             << targetRest->getManager()->getName() << endl;
+        return;
+    }
+    cout << "\n--- Available Managers ---" << endl;
+    for (size_t i = 0; i < allManagers->size(); i++) 
+    {
+        cout << i + 1 << ". " << (*allManagers)[i]->getName() << endl;
+    }
+
+    cout << "Enter Manager number (0 to cancel): ";
+    int mChoice;
+    cin >> mChoice;
+
+    if (mChoice == 0) return;
+    
+    while (mChoice < 1 || mChoice > (int)allManagers->size()) 
+    {
+        cout << "Invalid choice." << endl
+             << "Try again: ";
+        cin >> mChoice;
+    }
+
+    RestaurantManager* mgr = (*allManagers)[mChoice - 1];
+    targetRest->setManager(mgr);
+    mgr->setRestaurant(targetRest);
+    cout << "[Success] " << mgr->getName()
+         << " assigned to " << targetRest->getName() << endl;
+}
 void SystemManager::toggleRestaurantStatus ()
 {
     if (allRestaurants->empty())
@@ -140,7 +220,7 @@ void SystemManager::toggleRestaurantStatus ()
     for (auto& rest : *allRestaurants) {
         if (rest->getID() == targetId) {
             found = true;
-            string newStatus = (rest->getStatus() == Status::Disable) ? "Inactive" : "Active";
+            string newStatus = (rest->getStatus() == Status::Disable) ? "Active" : "Inactive";
             rest->setStatus(newStatus);
             cout << "[Success] Status of '" << rest->getName() << "' changed to: " << newStatus << endl;
             break;
