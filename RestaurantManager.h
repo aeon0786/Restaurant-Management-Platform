@@ -15,8 +15,8 @@ class RestaurantManager:public User
 
         void add_Item (ITEM);
         OrderStatus findStatus();
-        void addFood (string, string, int, double, int);
-        void addDrink (string, string, int, double, unsigned int);
+        void addFood (string, string, double, int);
+        void addDrink (string, string, double, unsigned int);
         void ModifyItem (int id);
         void updateItemPrice (int, double);
         

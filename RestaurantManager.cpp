@@ -2,7 +2,9 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <iomanip>
 #include "RestaurantManager.h"
+#include "DatabaseManager.h"
 
 
 RestaurantManager::RestaurantManager (string name, string pass, Role role) : User(name, pass, role) {}
@@ -19,15 +21,25 @@ void RestaurantManager::leaveRestaurant ()
     char c;
     cin >> c;
     if (c == 'y' || c == 'Y') {
-        restaurant->setManager(nullptr);
-        restaurant = nullptr;
-        cout << "[Success] You have left the restaurant." << endl;
+        sqlite3* db = DatabaseManager::getInstance().getDB();
+        sqlite3_stmt* stmt;
+        
+        const char* sql = "UPDATE restaurants SET manager_id = NULL WHERE id = ?;";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_int(stmt, 1, restaurant->getID());
+            if (sqlite3_step(stmt) == SQLITE_DONE) {
+                restaurant->setManager(nullptr);
+                restaurant = nullptr;
+                cout << "[Success] You have left the restaurant." << endl;
+            }
+            sqlite3_finalize(stmt);
+        }
     }
 }
 void RestaurantManager::add_Item (ITEM i)
 {
     string name, desc;
-    int id, x;
+    int x;
     double price;
                 
     cout << "\n--- Add New Item ---" << endl;
@@ -37,15 +49,13 @@ void RestaurantManager::add_Item (ITEM i)
     cout << "Enter Description: ";
     cin >> ws;
     getline(cin, desc);
-    cout << "Enter ID: ";
-    cin >> id;
     cout << "Enter Base Price: ";
     cin >> price;
     cout << "Enter Prep Time (mins)/Enter Volume for Drinks (ml): ";
     cin >> x;
             
-    if (i == ITEM::FOOD) addFood(name, desc, id, price, x);
-    else addDrink (name, desc, id, price, x);
+    if (i == ITEM::FOOD) addFood(name, desc, price, x);
+    else addDrink (name, desc, price, x);
 }
 OrderStatus RestaurantManager::findStatus()
 {
@@ -84,52 +94,110 @@ OrderStatus RestaurantManager::findStatus()
             f = true;
             break;
         default:
+            cout << "Error: Invalid selection. Please choose between 1 and 4." << endl;
             f = false;
             break;
         }
     }
     return st;
 }
-void RestaurantManager::addFood (string name, string description, int id, double price, int prep_time)
+void RestaurantManager::addFood (string name, string description, double price, int prep_time)
 {
-    if (restaurant && restaurant->getMenu())
-        restaurant->getMenu()->AddFood(name, description, id, price, prep_time);
-}
-void RestaurantManager::addDrink (string name, string description, int id, double price, unsigned int volume)
-{
-    if (restaurant && restaurant->getMenu())
-        restaurant->getMenu()->AddDrink(name, description, id, price, volume);
-    else 
+    if (restaurant == nullptr) return;
+    
+    sqlite3* db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt* stmt;
+    
+    const char* sql = "INSERT INTO menu_items (restaurant_id, type, name, description, base_price, prep_time, status) VALUES (?, 0, ?, ?, ?, ?, 1);";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
-        cout << "Error: restaurant or menu not found." << endl;
+        sqlite3_bind_int(stmt, 1, restaurant->getID());
+        sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 3, description.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(stmt, 4, price);
+        sqlite3_bind_int(stmt, 5, prep_time);
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE) 
+        {
+            cout << "Success: Food automatically assigned an ID and added to database!" << endl;
+        }
+        sqlite3_finalize(stmt);
+    }
+}
+void RestaurantManager::addDrink (string name, string description, double price, unsigned int volume)
+{
+    if (restaurant == nullptr) {
+        cout << "Error: restaurant not found." << endl;
+        return;
+    }
+
+    sqlite3* db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt* stmt;
+    
+    const char* sql = "INSERT INTO menu_items (restaurant_id, type, name, description, base_price, volume, status) VALUES (?, 1, ?, ?, ?, ?, 1);";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
+    {
+        sqlite3_bind_int(stmt, 1, restaurant->getID());
+        sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 3, description.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(stmt, 4, price);
+        sqlite3_bind_int(stmt, 5, volume);
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE) 
+        {
+            cout << "Success: Drink automatically assigned an ID and added to database!" << endl;
+        }
+        sqlite3_finalize(stmt);
     }
 }
 void RestaurantManager::ModifyItem (int id)
 {
-    if (restaurant && restaurant->getMenu())
-        restaurant->getMenu()->ModifyItemStatus(id);
-    else 
-    {
-        cout << "Error: restaurant or menu not found." << endl;
+    if (restaurant == nullptr) {
+        cout << "Error: restaurant not found." << endl;
+        return;
+    }
+
+    sqlite3* db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt* stmt;
+    
+    const char* sql = "UPDATE menu_items SET status = CASE WHEN status = 1 THEN 0 ELSE 1 END WHERE id = ? AND restaurant_id = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, id);
+        sqlite3_bind_int(stmt, 2, restaurant->getID());
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE && sqlite3_changes(db) > 0) 
+        {
+            cout << "Success: Item availability status modified!" << endl;
+        } 
+        else 
+        {
+            cout << "Error: Item not found in your restaurant!" << endl;
+        }
+        sqlite3_finalize(stmt);
     }
 }
 void RestaurantManager::updateItemPrice (int id, double newPrice)
 {
-    if (restaurant && restaurant->getMenu()) 
-    {
-        Item *item = restaurant->getMenu()->FindItem(id);
-        if (item) 
-        {
-            item->setItemBase_price(newPrice);
-        } 
-        else 
-        {
-            cout << "Item not found!" << endl;
-        }
+    if (restaurant == nullptr) {
+        cout << "Error: restaurant not found." << endl;
+        return;
     }
-    else 
-    {
-        cout << "Error: restaurant or menu not found." << endl;
+
+    sqlite3* db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt* stmt;
+    
+    const char* sql = "UPDATE menu_items SET base_price = ? WHERE id = ? AND restaurant_id = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_double(stmt, 1, newPrice);
+        sqlite3_bind_int(stmt, 2, id);
+        sqlite3_bind_int(stmt, 3, restaurant->getID());
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE && sqlite3_changes(db) > 0) {
+            cout << "[Success] Item price updated!" << endl;
+        } else {
+            cout << "[Error] Item not found in your restaurant!" << endl;
+        }
+        sqlite3_finalize(stmt);
     }
 }
 void RestaurantManager::changeOrderStatus (Order &order, OrderStatus status)
@@ -140,6 +208,7 @@ void RestaurantManager::displayDashboard ()
 {
     int choice = 0;
     bool loggedIn = true;
+    sqlite3* db = DatabaseManager::getInstance().getDB();
 
     while(loggedIn) 
     {
@@ -212,37 +281,71 @@ void RestaurantManager::displayDashboard ()
             {
                 int id;
                 cout << "\n--- Modify Item Status ---" << endl;
-                cout << "Enter Item ID to modify: ";
-                cin >> id;
                 
-                if (restaurant->getMenu()) 
+                sqlite3_stmt *stmt;
+                const char* menuSql = "SELECT id, name, status FROM menu_items WHERE restaurant_id = ?;";
+                if (sqlite3_prepare_v2(db, menuSql, -1, &stmt, nullptr) == SQLITE_OK) 
                 {
-                    restaurant->getMenu()->ModifyItemStatus(id);
+                    sqlite3_bind_int(stmt, 1, restaurant->getID());
+                    while (sqlite3_step(stmt) == SQLITE_ROW) 
+                    {
+                        cout << "ID: " << sqlite3_column_int(stmt, 0) << " | " 
+                             << sqlite3_column_text(stmt, 1) << " | Status: " 
+                             << (sqlite3_column_int(stmt, 2) ? "Available" : "Unavailable") << endl;
+                    }
+                    sqlite3_finalize(stmt);
                 }
-                else 
-                {
-                    cout << "Error: No menu assigned to this manager!\n";
-                }
+
+                cout << "\nEnter Item ID to modify: ";
+                cin >> id;
+                ModifyItem(id);
                 break;
             }
             case 5:
             {
-                int id, status_str;
-                OrderStatus st;
+                int id;
                 cout << "###  Change Order Status  ###" << endl;
-                restaurant->displayOrdersHistory ();
-                cout << "Enter Order's ID: ";
-                cin >> id;
-                Order *order = restaurant->findOrder(id);
-                if (order != nullptr)
+                
+                sqlite3_stmt* stmt;
+                const char* orderSql = "SELECT o.id, u.name, o.total_price, o.status FROM orders o JOIN users u ON o.customer_id = u.id WHERE o.restaurant_id = ? AND o.status > 0;";
+                if (sqlite3_prepare_v2(db, orderSql, -1, &stmt, nullptr) == SQLITE_OK) 
                 {
-                    OrderStatus st = findStatus();
-                    order->setOrderStatus(st);
+                    sqlite3_bind_int(stmt, 1, restaurant->getID());
+                    while (sqlite3_step(stmt) == SQLITE_ROW) 
+                    {
+                        cout << "Order ID: " << sqlite3_column_int(stmt, 0) 
+                             << " | Customer: " << sqlite3_column_text(stmt, 1) 
+                             << " | Total: $" << fixed << setprecision(2) << sqlite3_column_double(stmt, 2)
+                             << " | Status Level: " << sqlite3_column_int(stmt, 3) << endl;
+                    }
+                    sqlite3_finalize(stmt);
                 }
-                else 
+
+                cout << "\nEnter Order's ID: ";
+                cin >> id;
+                
+                OrderStatus st = findStatus();
+                int statusInt = 0;
+                if(st == OrderStatus::REGISTERED) statusInt = 1;
+                else if (st == OrderStatus::IN_PREPARATION) statusInt = 2;
+                else if (st == OrderStatus::DELIVERED) statusInt = 3;
+
+                const char* updateOrdSql = "UPDATE orders SET status = ? WHERE id = ? AND restaurant_id = ?;";
+                if (sqlite3_prepare_v2(db, updateOrdSql, -1, &stmt, nullptr) == SQLITE_OK) 
                 {
-                    cout << "Order Not Found." << endl;
-                    break;
+                    sqlite3_bind_int(stmt, 1, statusInt);
+                    sqlite3_bind_int(stmt, 2, id);
+                    sqlite3_bind_int(stmt, 3, restaurant->getID());
+                    
+                    if (sqlite3_step(stmt) == SQLITE_DONE && sqlite3_changes(db) > 0) 
+                    {
+                        cout << "Success: Order Status Updated in Database!" << endl;
+                    } 
+                    else 
+                    {
+                        cout << "Error: Order Not Found." << endl;
+                    }
+                    sqlite3_finalize(stmt);
                 }
                 break;
             }
@@ -251,27 +354,51 @@ void RestaurantManager::displayDashboard ()
                 int id;
                 double newPrice;
                 cout << "###  Change Item's price  ###" << endl;
-                restaurant->getMenu()->DisplayMenu();
-                cout << "Enter Item's ID: ";
-                cin >> id;
-                cout << "Enter New Price: ";
-                cin >> newPrice;
-                Item *item = restaurant->getMenu()->FindItem(id);
-                if (item != nullptr) 
+                
+                sqlite3_stmt* stmt;
+                const char* menuSql = "SELECT id, name, base_price FROM menu_items WHERE restaurant_id = ? AND status = 1;";
+                if (sqlite3_prepare_v2(db, menuSql, -1, &stmt, nullptr) == SQLITE_OK) 
                 {
-                    item->setItemBase_price(newPrice);
-                } 
-                else 
-                {
-                    cout << "Item not found!" << endl;
+                    sqlite3_bind_int(stmt, 1, restaurant->getID());
+                    while (sqlite3_step(stmt) == SQLITE_ROW) 
+                    {
+                        cout << "ID: " << sqlite3_column_int(stmt, 0) << " | " 
+                             << sqlite3_column_text(stmt, 1) << " | Current Price: $" 
+                             << fixed << setprecision(2) << sqlite3_column_double(stmt, 2) << endl;
+                    }
+                    sqlite3_finalize(stmt);
                 }
+
+                cout << "\nEnter Item's ID: ";
+                cin >> id;
+                cout << "Enter New Price: $";
+                cin >> newPrice;
+                updateItemPrice(id, newPrice);
+                break;
                 break;
             }
             case 7:
             {
-                if (restaurant) {
+                if (restaurant) 
+                {
                     cout << "\n--- History Of Orders ---" << endl;
-                    restaurant->displayOrdersHistory ();
+                    sqlite3_stmt* stmt;
+                    const char* sql = "SELECT o.id, u.name, o.total_price, o.status FROM orders o JOIN users u ON o.customer_id = u.id WHERE o.restaurant_id = ? AND o.status > 0;";
+                    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
+                    {
+                        sqlite3_bind_int(stmt, 1, restaurant->getID());
+                        while (sqlite3_step(stmt) == SQLITE_ROW) 
+                        {
+                            int stLevel = sqlite3_column_int(stmt, 3);
+                            string stString = (stLevel == 1) ? "Registered" : (stLevel == 2) ? "Preparing" : "Delivered";
+
+                            cout << "Order ID: " << sqlite3_column_int(stmt, 0)
+                                 << " | Customer: " << sqlite3_column_text(stmt, 1)
+                                 << " | Total: $" << fixed << setprecision(2) << sqlite3_column_double(stmt, 2)
+                                 << " | Status: " << stString << endl;
+                        }
+                        sqlite3_finalize(stmt);
+                    }
                 } 
                 else 
                 {

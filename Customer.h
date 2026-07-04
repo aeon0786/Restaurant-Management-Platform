@@ -1,5 +1,4 @@
 #pragma once 
-#include <vector>
 #include "User.h"
 #include "Order.h"
 #include "Restaurant.h"
@@ -7,7 +6,6 @@
 class Customer:public User
 {
     private:
-        vector<Order> OrdersHistory;
         Order* currentOrder;
         double balance;
 
@@ -15,15 +13,15 @@ class Customer:public User
         double getBalance () const;
         Order *getCart () const;
         void createNewOrder (string);
-        bool finalizeOrder ();
+        bool finalizeOrder (int, sqlite3 *, sqlite3_stmt *);
         void DisplayOrderHistory () const;
 
-        void handleNewOrder (const vector<Restaurant *> &);
+        void handleNewOrder ();
         void handleWallet ();
         void ordering (Restaurant *);
     public:
         Customer (string, string, Role);
         
-        void displayDashboard (const vector<Restaurant *> &);
+        void displayDashboard ();
         unsigned int totalOrders () const;
 };

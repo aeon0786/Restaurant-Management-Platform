@@ -8,9 +8,6 @@
 class SystemManager : public User
 {
     private:
-        vector <Restaurant *> *allRestaurants;
-        vector <Customer *> *allCustomers;
-        vector <RestaurantManager *> *allManagers;
 
         void registerNewRestaurant ();
         void toggleRestaurantStatus ();
@@ -20,10 +17,6 @@ class SystemManager : public User
 
     public:
         SystemManager (string, string, Role);
-
-        void setPlatformData(vector<Restaurant *> &, 
-                             vector<Customer *> &, 
-                             vector<RestaurantManager *> &);
 
         void displayDashboard();
 };

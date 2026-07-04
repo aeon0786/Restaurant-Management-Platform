@@ -4,15 +4,12 @@
 #include "Customer.h"
 #include "RestaurantManager.h"
 #include "SystemManager.h"
+#include "DatabaseManager.h"
 #include <chrono>
 #include <thread>
 
-vector <Restaurant*> global_restaurants;
-vector <Customer*> global_customers;
-vector <RestaurantManager*> global_managers;
-vector <SystemManager*> global_admin;
-
 const string MASTER_KEY = "FERDOWSI_ADMIN_2026";
+const string clear = "\x1B[2J\x1B[H";
 
 using namespace std;
 void showBanner();
@@ -23,6 +20,11 @@ void displayDaushboards (User *);
 int main ()
 {
     
+    if (!DatabaseManager::getInstance().openConection("food_platform.db")) 
+    {
+        cout << "Error initializing database!" << endl;
+        return 1;
+    }//conecting to database.
 
     bool running = true;
     while (running)
@@ -57,16 +59,14 @@ int main ()
                     {
                         cout << "Login failed... \nDo you want to try again? [y/n]: ";
                         cin >> choice;
-                        if (choice == 'n' || choice == 'N')
-                        {
-                            break;
-                        }
+                        if (choice == 'n' || choice == 'N') break;
                     }
                 }
             
                 if (loggedUser != nullptr)
                 {
                     displayDaushboards(loggedUser);
+                    delete loggedUser;
                 }
                 break;
             }
@@ -112,6 +112,8 @@ int main ()
                 break;
         }
     }
+
+    DatabaseManager::getInstance().closeConection();
     return 0;
 }
 void showBanner()
@@ -128,78 +130,41 @@ void showBanner()
     }
     cout << "\n========================================" << endl;
 }
-bool Registeration (const string &name, const string &user_name, const string &pass, int choice)
+bool Registeration(const string &name, const string &user_name, const string &pass, int choice)
 {
-    bool registered = false, flag = true;
-    while (flag && !registered)
+    Role role;
+    if (choice == 1) role = Role::Customer;
+    else if (choice == 2) role = Role::RestaurantManager;
+    else if (choice == 3) 
     {
-        switch (choice)
+        string attemptKey;
+        cout << "\n[SECURITY WARNING] This action requires authorization." << endl
+             << "Enter the Master Admin Key: ";
+        cin >> attemptKey;
+        if (attemptKey != MASTER_KEY) 
         {
-            case 1 :
-            {
-                Customer *newCustomer = new Customer(user_name, pass, Role::Customer);
-                newCustomer->setName(name);
-                global_customers.push_back(newCustomer);
-                registered = true;
-
-                cout << clear
-                     << "\n[Success] Customer account created! Now you can login." << endl;
-                break;
-            }
-            case 2 :
-            {
-                RestaurantManager *newRManager = new RestaurantManager (user_name, pass, Role::RestaurantManager);
-                newRManager->setName(name);
-                global_managers.push_back(newRManager);
-                registered = true;
-
-                cout << clear
-                     << "\n[Success] Restaurant Manager account created! You can now login." << endl;
-                break;
-            }
-            case 3 :
-            {
-                string attemptKey;
-                cout << "\n[SECURITY WARNING] This action requires authorization." << endl;
-                cout << "Enter the Master Admin Key: ";
-                cin >> attemptKey;
-
-                if (attemptKey == MASTER_KEY) 
-                {
-                    SystemManager* newAdmin = new SystemManager(user_name, pass, Role::SystemAdmin);
-                    newAdmin->setName(name);
-                    newAdmin->setPlatformData(global_restaurants, global_customers, global_managers);
-                
-                    global_admin.push_back(newAdmin);
-                    registered = true;
-
-                    cout << "\n[Success] System Administrator created successfully!" << endl;
-                } 
-                else 
-                {
-                    cout << "\n[Error] Invalid Master Key! Registration denied." << endl;
-                }
-                break;
-            }
-            default:
-            {
-                char choice;
-                cout << clear
-                     << "[Error] Invalid input" << endl
-                     << "Do you want to try again? [y/n] : ";
-            
-                cin >> choice;
-                if (choice == 'n' || choice == 'N')
-                {
-                    flag = false;
-                    break;
-                }
-
-                break;
-            }
+            cout << "\n[Error] Invalid Master Key! Registration denied." << endl;
+            return false;
         }
+        role = Role::SystemAdmin;
+    } 
+    else return false;
+
+    User tempUser(user_name, pass, role);
+    tempUser.setName(name);
+
+    if (DatabaseManager::getInstance().saveUser(tempUser)) 
+    {
+        cout << clear << "\n[Success] Account created! You can now login." << endl;
+        this_thread::sleep_for(chrono::seconds(2));
+        return true;
+    } 
+    else 
+    {
+        cout << clear << "\n[Error] Registration failed. Username might already exist." << endl;
+        this_thread::sleep_for(chrono::seconds(2));
+        return false;
     }
-    return registered;
 }
 User* Login ()
 {
@@ -214,46 +179,35 @@ User* Login ()
     cin >> ws;
     getline (cin, pass);
 
-    bool loggedIn = false;
+    DatabaseManager::UserData data = DatabaseManager::getInstance().authenticateUser(user_name, pass);
 
-    for (auto admin : global_admin) 
+    if (data.success)
     {
-        if (admin->get_UserName() == user_name && admin->UpdatePass(pass, pass)) 
+        Role role = static_cast <Role> (data.roleNum);
+
+        if (role == Role::SystemAdmin) 
         {
-            cout << clear
-                 << "Welcome " << admin->getName() << "!," << "You have a tough job ahead of you!." << endl;
+            SystemManager* admin = new SystemManager(data.username, data.password, role);
+            admin->setName(data.name);
+            cout << clear << "Welcome " << admin->getName() << "You have a tough job ahead of you!." << endl;
             this_thread::sleep_for(chrono::seconds(1));
-            loggedIn = true;
             return admin;
         }
-    }
-    if (!loggedIn) 
-    {
-        for (auto mgr : global_managers) 
+        else if (role == Role::RestaurantManager) 
         {
-            if (mgr->get_UserName() == user_name && mgr->UpdatePass(pass, pass)) 
-            {
-                cout << clear
-                     << "Welcome Manager!" << endl;
-                this_thread::sleep_for(chrono::seconds(1));
-                loggedIn = true;
-                return mgr;
-            }
+            RestaurantManager* mgr = new RestaurantManager(data.username, data.password, role);
+            mgr->setName(data.name);
+            cout << clear << "Welcome Manager " << mgr->getName() << "!" << endl;
+            this_thread::sleep_for(chrono::seconds(1));
+            return mgr;
         }
-    }
-
-    if (!loggedIn) 
-    {
-        for (auto customer : global_customers) 
+        else if (role == Role::Customer) 
         {
-            if (customer->get_UserName() == user_name && customer->UpdatePass(pass, pass)) 
-            {
-                cout << clear
-                     << "Welcome " << customer->getName() << "Have a good shopping! ... " << endl;
-                this_thread::sleep_for(chrono::seconds(1));
-                loggedIn = true;
-                return customer;
-            }
+            Customer* customer = new Customer(data.username, data.password, role);
+            customer->setName(data.name);
+            cout << clear << "Welcome " << customer->getName() << "! Have a good shopping! ... " << endl;
+            this_thread::sleep_for(chrono::seconds(1));
+            return customer;
         }
     }
     return nullptr;
@@ -268,13 +222,12 @@ void displayDaushboards (User * user)
         if (admin) 
         {
             cout << clear 
-                 << "Welcome " << admin->getName() << "! You have a tough job ahead.\n";
+                 << "Welcome " << admin->getName() << "You have a tough job ahead.\n";
             this_thread::sleep_for(chrono::seconds(1));
             admin->displayDashboard();
         }
         break;
     }
-        break;
     case Role::RestaurantManager :
     {
         RestaurantManager * manager = dynamic_cast <RestaurantManager*>(user);
@@ -295,7 +248,7 @@ void displayDaushboards (User * user)
             cout << clear 
                  << "Welcome " << customer->getName() << "! Have a good shopping..." << endl;
             this_thread::sleep_for(chrono::seconds(1));
-            customer->displayDashboard(global_restaurants);
+            customer->displayDashboard();
         }
         break;
     }
