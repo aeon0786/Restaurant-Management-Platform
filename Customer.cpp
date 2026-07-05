@@ -6,7 +6,6 @@
 
 Customer::Customer (string name, string pass, Role r) 
     : User(name, pass, r),
-    currentOrder(nullptr),
     balance(0)
 {}
 void Customer::DisplayOrderHistory () const
@@ -54,31 +53,45 @@ void Customer::DisplayOrderHistory () const
     }
     cout << "=========================================================" << endl;
 }
-void Customer::addBalance (double amount) { balance += amount; }
-double Customer::getBalance () const { return balance; }
-Order *Customer::getCart () const { return currentOrder; }
-void Customer::createNewOrder (string name) 
+void Customer::addBalance (double amount) 
 {
-    if (currentOrder) delete currentOrder;
-    currentOrder = new Order(name);
+    sqlite3* db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt* stmt;
+    int customerId = DatabaseManager::getInstance().getUserId(this->get_UserName());
+
+    const char* sql = "INSERT INTO credit_requests (user_id, amount, status) VALUES (?, ?, 0);";
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, customerId);
+        sqlite3_bind_double(stmt, 2, amount);
+        sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        cout << "[Success] Request for $" << amount << " submitted for admin approval." << endl;
+    }
 }
+void Customer::setBalance(double b) { balance = b; }
+double Customer::getBalance () const { return balance; }
 bool Customer::finalizeOrder (int orderId, sqlite3 *db, sqlite3_stmt *stmt)
 {
     double totalCartPrice = 0.0;
-    const char* totalSql = "SELECT m.base_price FROM order_items oi JOIN menu_items m ON oi.item_id = m.id WHERE oi.order_id = ?;";
+    const char* totalSql = "SELECT m.base_price, m.type, m.prep_time FROM order_items oi JOIN menu_items m ON oi.item_id = m.id WHERE oi.order_id = ?;";
     if (sqlite3_prepare_v2(db, totalSql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
         sqlite3_bind_int(stmt, 1, orderId);
         while (sqlite3_step(stmt) == SQLITE_ROW) 
         {
-            totalCartPrice += sqlite3_column_double(stmt, 0);
+            double base = sqlite3_column_double(stmt, 0);
+            int type = sqlite3_column_int(stmt, 1);
+            int prep = sqlite3_column_int(stmt, 2);
+            totalCartPrice += (type == 0 && prep > 30) ? base * 1.2 : base;
         }
         sqlite3_finalize(stmt);
     }
 
     if (totalCartPrice == 0.0) 
     {
-        cout << "[Error] Your cart is empty!" << endl;
+        cout << "Error: Your cart is empty!" << endl;
+        return false;
     }
     else if (balance >= totalCartPrice) 
     {
@@ -93,10 +106,12 @@ bool Customer::finalizeOrder (int orderId, sqlite3 *db, sqlite3_stmt *stmt)
             sqlite3_finalize(stmt);
         }
         cout << "Success: Payment successful! Total paid: $" << totalCartPrice << endl;
+        return true;
     } 
     else 
     {
         cout << "Error: Insufficient funds! You need $" << totalCartPrice << " but have $" << balance << endl;
+        return false;
     }
 }
 void Customer::ordering (Restaurant *Choice) 
@@ -138,7 +153,7 @@ void Customer::ordering (Restaurant *Choice)
 
         cout << "\nOptions:" << endl
              << "1. Add Item to Cart" << endl
-             << "2. Move Item from Cart"
+             << "2. Move Item from Cart" << endl
              << "3. Finalize & Pay" << endl
              << "4. Cancel Order" << endl
              << "Select: ";
@@ -215,8 +230,11 @@ void Customer::ordering (Restaurant *Choice)
         }
         case 3:
         {
-            finalizeOrder(orderId, db, stmt);
-            isOrdering = false;
+            if (finalizeOrder(orderId, db, stmt))
+            {
+                isOrdering = false;
+            }
+            else cout << "Error: Empty Cart/Insufficient Account Balance" << endl;
             break;
         }
         case 4:
@@ -274,28 +292,19 @@ void Customer::handleNewOrder ()
     cin >> restChoice;
     if (restChoice == 0) return;
 
-    if (restChoice > restCount)
-    {
-        cout << clear << "Invalid choice!\n Try Again." << endl;
-        bool input = false;
-        while (!input)
-        {
-            cin >> restChoice;
-            if (restChoice <= restCount || restChoice == 0) input = true;
-        }
-    }
-    if (restChoice == 0) return;
-
     Restaurant* selectedRest = DatabaseManager::getInstance().getRestaurantById(restChoice);
+    while (selectedRest == nullptr && restChoice != 0)
+    {
+        cout << "Invalid choice or restaurant inactive! Try Again (0 to cancel): ";
+        cin >> restChoice;
+        if (restChoice == 0) return;
+        selectedRest = DatabaseManager::getInstance().getRestaurantById(restChoice);
+    }
 
     if (selectedRest != nullptr) 
     {
         this->ordering(selectedRest);
         delete selectedRest; 
-    } 
-    else 
-    {
-        cout << "[Error] Invalid Restaurant ID or restaurant is currently inactive." << endl;
     }
 }
 void Customer::handleWallet()

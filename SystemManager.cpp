@@ -22,10 +22,11 @@ void SystemManager::displayDashboard ()
              << "1. Register New Restaurant" << endl
              << "2. Toggle Restaurant Status (Enable/Disable)" << endl
              << "3. Assign Manager to Restaurant" << endl
-             << "4. View General Platform Reports (Sales & Orders)" << endl
-             << "5. View Users Activity Report" << endl
-             << "6. User information management" << endl
-             << "7. Logout" << endl
+             << "4. Manage Credit Requests." << endl
+             << "5. View General Platform Reports (Sales & Orders)" << endl
+             << "6. View Users Activity Report" << endl
+             << "7. User information management" << endl
+             << "8. Logout" << endl
              << "=================================================" << endl
              << "Enter your choice: ";
 
@@ -38,10 +39,11 @@ void SystemManager::displayDashboard ()
             case 1: registerNewRestaurant(); break;
             case 2: toggleRestaurantStatus(); break;
             case 3: assignManagerToRestaurant(); break;
-            case 4: displayGeneralReports(); break;
-            case 5: displayUserActivity(); break;
-            case 6: this->infomationManagment(); break;
-            case 7:
+            case 4: RequestsManagment(); break;
+            case 5: displayGeneralReports(); break;
+            case 6: displayUserActivity(); break;
+            case 7: this->infomationManagment(); break;
+            case 8:
                 cout << clear
                      << "Logging out of Admin Dashboard..." << endl;
                 loggedIn = false;
@@ -188,6 +190,52 @@ void SystemManager::assignManagerToRestaurant()
         sqlite3_finalize(stmt);
     }
 }
+void SystemManager::RequestsManagment()
+{
+    sqlite3* db = DatabaseManager::getInstance().getDB();
+    
+    if (db == nullptr) {
+        cout << "Error: Database connection is not active!" << endl;
+        return;
+    }
+    sqlite3_stmt* stmt;
+    const char* sql = "SELECT cr.id, u.name, cr.amount FROM credit_requests cr "
+                      "JOIN users u ON cr.user_id = u.id WHERE cr.status = 0;";
+                      
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            cout << "Req ID: " << sqlite3_column_int(stmt, 0) 
+                 << " | User: " << sqlite3_column_text(stmt, 1)
+                 << " | Amount: $" << sqlite3_column_double(stmt, 2) << endl;
+        }
+        sqlite3_finalize(stmt);
+    }
+
+    int reqId;
+    cout << "\nEnter Request ID to Approve (or 0 to cancel): ";
+    cin >> reqId;
+
+    if (reqId != 0) {
+        sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
+
+        const char* addCreditSql = "UPDATE users SET balance = balance + (SELECT amount FROM credit_requests WHERE id = ?) "
+                                   "WHERE id = (SELECT user_id FROM credit_requests WHERE id = ?);";
+        sqlite3_prepare_v2(db, addCreditSql, -1, &stmt, nullptr);
+        sqlite3_bind_int(stmt, 1, reqId);
+        sqlite3_bind_int(stmt, 2, reqId);
+        sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        const char* approveSql = "UPDATE credit_requests SET status = 1 WHERE id = ?;";
+        sqlite3_prepare_v2(db, approveSql, -1, &stmt, nullptr);
+        sqlite3_bind_int(stmt, 1, reqId);
+        sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
+        cout << "Success: Request approved." << endl;
+    }
+}
 void SystemManager::toggleRestaurantStatus ()
 {
     sqlite3* db = DatabaseManager::getInstance().getDB();
@@ -212,7 +260,7 @@ void SystemManager::toggleRestaurantStatus ()
     }
 
     if (restCount == 0) {
-        cout << "[Error] No restaurants available in the system! Please register a restaurant first." << endl;
+        cout << "Error: No restaurants available in the system! Please register a restaurant first." << endl;
         return;
     }
 
@@ -227,9 +275,9 @@ void SystemManager::toggleRestaurantStatus ()
         sqlite3_bind_int(stmt, 1, targetId);
         if (sqlite3_step(stmt) == SQLITE_DONE) 
         {
-            cout << "[Success] Restaurant status toggled successfully." << endl;
+            cout << "Success: Restaurant status toggled successfully." << endl;
         } else {
-            cout << "[Error] Restaurant ID not found." << endl;
+            cout << "Error: Restaurant ID not found." << endl;
         }
         sqlite3_finalize(stmt);
     }
@@ -241,19 +289,23 @@ void SystemManager::displayGeneralReports ()
     int totalRest = 0, totalCust = 0, totalOrders = 0;
     double totalSales = 0.0;
 
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM restaurants;", -1, &stmt, nullptr) == SQLITE_OK) {
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM restaurants;", -1, &stmt, nullptr) == SQLITE_OK) 
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) totalRest = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
     }
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM users WHERE role = 1;", -1, &stmt, nullptr) == SQLITE_OK) {
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM users WHERE role = 1;", -1, &stmt, nullptr) == SQLITE_OK) 
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) totalCust = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
     }
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM orders;", -1, &stmt, nullptr) == SQLITE_OK) {
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM orders;", -1, &stmt, nullptr) == SQLITE_OK) 
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) totalOrders = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
     }
-    if (sqlite3_prepare_v2(db, "SELECT IFNULL(SUM(total_price), 0.0) FROM orders;", -1, &stmt, nullptr) == SQLITE_OK) {
+    if (sqlite3_prepare_v2(db, "SELECT IFNULL(SUM(total_price), 0.0) FROM orders;", -1, &stmt, nullptr) == SQLITE_OK) 
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) totalSales = sqlite3_column_double(stmt, 0);
         sqlite3_finalize(stmt);
     }

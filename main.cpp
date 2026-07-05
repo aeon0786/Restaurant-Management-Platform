@@ -9,7 +9,6 @@
 #include <thread>
 
 const string MASTER_KEY = "FERDOWSI_ADMIN_2026";
-const string clear = "\x1B[2J\x1B[H";
 
 using namespace std;
 void showBanner();
@@ -138,12 +137,12 @@ bool Registeration(const string &name, const string &user_name, const string &pa
     else if (choice == 3) 
     {
         string attemptKey;
-        cout << "\n[SECURITY WARNING] This action requires authorization." << endl
+        cout << "\nSECURITY WARNING: This action requires authorization." << endl
              << "Enter the Master Admin Key: ";
         cin >> attemptKey;
         if (attemptKey != MASTER_KEY) 
         {
-            cout << "\n[Error] Invalid Master Key! Registration denied." << endl;
+            cout << "\nError: Invalid Master Key! Registration denied." << endl;
             return false;
         }
         role = Role::SystemAdmin;
@@ -155,13 +154,13 @@ bool Registeration(const string &name, const string &user_name, const string &pa
 
     if (DatabaseManager::getInstance().saveUser(tempUser)) 
     {
-        cout << clear << "\n[Success] Account created! You can now login." << endl;
+        cout << clear << "\nSuccess: Account created! You can now login." << endl;
         this_thread::sleep_for(chrono::seconds(2));
         return true;
     } 
     else 
     {
-        cout << clear << "\n[Error] Registration failed. Username might already exist." << endl;
+        cout << clear << "\nError: Registration failed. Username might already exist." << endl;
         this_thread::sleep_for(chrono::seconds(2));
         return false;
     }
@@ -185,7 +184,9 @@ User* Login ()
     {
         Role role = static_cast <Role> (data.roleNum);
 
-        if (role == Role::SystemAdmin) 
+        switch (role)
+        {
+        case (Role::SystemAdmin):
         {
             SystemManager* admin = new SystemManager(data.username, data.password, role);
             admin->setName(data.name);
@@ -193,7 +194,7 @@ User* Login ()
             this_thread::sleep_for(chrono::seconds(1));
             return admin;
         }
-        else if (role == Role::RestaurantManager) 
+        case (Role::RestaurantManager):
         {
             RestaurantManager* mgr = new RestaurantManager(data.username, data.password, role);
             mgr->setName(data.name);
@@ -201,18 +202,22 @@ User* Login ()
             this_thread::sleep_for(chrono::seconds(1));
             return mgr;
         }
-        else if (role == Role::Customer) 
+        case (Role::Customer):
         {
-            Customer* customer = new Customer(data.username, data.password, role);
+            Customer *customer = new Customer(data.username, data.password, role);
             customer->setName(data.name);
-            cout << clear << "Welcome " << customer->getName() << "! Have a good shopping! ... " << endl;
+            customer->setBalance(data.balance);
+            cout << clear << "Welcome " << customer->getName() << "Have a good shopping! ... " << endl;
             this_thread::sleep_for(chrono::seconds(1));
             return customer;
+        }
+        default:
+            break;
         }
     }
     return nullptr;
 }
-void displayDaushboards (User * user)
+void displayDaushboards (User *user)
 {
     switch (user->getRole())
     {
@@ -236,6 +241,18 @@ void displayDaushboards (User * user)
             cout << clear
                  << "Welcome Manager " << manager->getName() << "!" << endl;
             this_thread::sleep_for(chrono::seconds(1));
+
+            int userId = DatabaseManager::getInstance().getUserId(manager->get_UserName());
+
+            Restaurant* rest = DatabaseManager::getInstance().getRestaurantByManagerId(userId); 
+
+            if (rest) {
+                manager->setRestaurant(rest);
+            } 
+            else 
+            {
+                cout << "Error: The restaurant that assoaited by this restaurant manager was not found." << endl;
+            }
             manager->displayDashboard();
         }
         break;

@@ -4,6 +4,8 @@
 #include <iostream>
 #include "User.h"
 
+class Restaurant;
+
 class DatabaseManager 
 {
     private:
@@ -35,6 +37,7 @@ class DatabaseManager
 
         UserData authenticateUser(const string&, const string&);
         Restaurant *getRestaurantById(int);
+        Restaurant *getRestaurantByManagerId(int);
         int getUserId(const std::string &);
 
 };

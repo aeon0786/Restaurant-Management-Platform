@@ -79,6 +79,14 @@ void DatabaseManager::createTables()
         "item_id INTEGER NOT NULL,"
         "FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,"
         "FOREIGN KEY(item_id) REFERENCES menu_items(id) ON DELETE CASCADE"
+        ");"
+        
+        "CREATE TABLE IF NOT EXISTS credit_requests ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "user_id INTEGER NOT NULL,"
+        "amount REAL NOT NULL,"
+        "status INTEGER DEFAULT 0," // 0: Pending, 1: Approved, 2: Rejected
+        "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE"
         ");";
 
     char* errMsg = nullptr;
@@ -165,6 +173,10 @@ Restaurant *DatabaseManager::getRestaurantById(int id)
         }
         sqlite3_finalize(stmt);
     }
+    if (rest != nullptr) 
+    {
+        rest->getMenu()->setRestaurantId(id);
+    }
     return rest;
 }
 int DatabaseManager::getUserId(const std::string& username) 
@@ -180,4 +192,38 @@ int DatabaseManager::getUserId(const std::string& username)
         sqlite3_finalize(stmt);
     }
     return id;
+}
+Restaurant *DatabaseManager::getRestaurantByManagerId(int managerId) 
+{
+    const char* sql = "SELECT name, address, phone_number, prep_time, details, status, id FROM restaurants WHERE manager_id = ?;";
+    sqlite3_stmt *stmt;
+    Restaurant *rest = nullptr;
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, managerId);
+        
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            string name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            string address = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            string phone = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            int prep_time = sqlite3_column_int(stmt, 3);
+            string details = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            int status = sqlite3_column_int(stmt, 5);
+            int id = sqlite3_column_int(stmt, 6);
+            
+            Status st = (status == 0) ? Status::Disable : Status::Enable;
+
+            rest = new Restaurant(name, address, phone, id, prep_time, details, st);
+        }
+        sqlite3_finalize(stmt);
+    } 
+    else 
+    {
+        std::cerr << "SQL Error in getRestaurantByManagerId: " << sqlite3_errmsg(db) << std::endl;
+    }
+    if (rest != nullptr) 
+    {
+        rest->getMenu()->setRestaurantId(rest->getID());
+    }
+    return rest;
 }

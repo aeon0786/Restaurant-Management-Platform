@@ -1,4 +1,5 @@
 #pragma once 
+#include <sqlite3.h>
 #include "User.h"
 #include "Order.h"
 #include "Restaurant.h"
@@ -6,13 +7,10 @@
 class Customer:public User
 {
     private:
-        Order* currentOrder;
         double balance;
 
         void addBalance (double);
         double getBalance () const;
-        Order *getCart () const;
-        void createNewOrder (string);
         bool finalizeOrder (int, sqlite3 *, sqlite3_stmt *);
         void DisplayOrderHistory () const;
 
@@ -22,6 +20,7 @@ class Customer:public User
     public:
         Customer (string, string, Role);
         
+        void setBalance (double);
         void displayDashboard ();
         unsigned int totalOrders () const;
 };
