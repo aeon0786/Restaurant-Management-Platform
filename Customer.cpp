@@ -191,12 +191,12 @@ void Customer::ordering (Restaurant *Choice)
                     sqlite3_bind_int(stmt, 2, itemId);
                     sqlite3_step(stmt);
                     sqlite3_finalize(stmt);
-                    cout << "[Success] Item added to cart!" << endl;
+                    cout << "Success: Item added to cart!" << endl;
                 }
             }
             else 
             {
-                cout << "[Error] Item is currently unavailable or invalid!" << endl;
+                cout << "Error: Item is currently unavailable or invalid!" << endl;
             }
             break;
         }
