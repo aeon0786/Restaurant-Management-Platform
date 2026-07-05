@@ -1,0 +1,17 @@
+# Compiled C++ files
+*.exe
+*.o
+*.out
+*.obj
+
+# SQLite Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# VS Code directory
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
