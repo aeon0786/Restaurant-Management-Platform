@@ -1,8 +1,9 @@
 #include <iostream>
-#include "User.h"
-#include "DatabaseManager.h"
 #include <thread>
 #include <chrono>
+#include "User.h"
+#include "DatabaseManager.h"
+#include "mainFunctions.h"
 
 User::User (string Uname, string pass, Role r) : username(Uname), password(pass), role(r) {}
 bool User::UpdatePass (string old_pass, string new_pass)
@@ -44,8 +45,12 @@ void User::infomationManagment ()
          << "4.Change User Phone" << endl
          << "0.To back" << endl
          << "Your choice: ";
-         cin >> choice;
-    
+    cin >> choice;
+    if (cin.fail()) 
+    {
+        cin.clear(); cin.ignore(10000, '\n');
+        choice = -1;
+    }
     switch (choice)
     {
     case 1 :
@@ -56,7 +61,7 @@ void User::infomationManagment ()
         cin >> ws;
         getline (cin, newName);
         this->setName (newName);
-        DatabaseManager::getInstance().saveUser(*this, this->getBalance());
+        UserDAO::saveUser(*this, this->getBalance());
         cout << "Name Updated.";
         this_thread::sleep_for(chrono::milliseconds(50));
         break;
@@ -75,7 +80,7 @@ void User::infomationManagment ()
 
         if (this->UpdateUserName (pass, newUName))
         {
-            DatabaseManager::getInstance().saveUser(*this, this->getBalance());
+            UserDAO::saveUser(*this, this->getBalance());
             cout << "User Name Updated.";
         }
         else
@@ -97,7 +102,8 @@ void User::infomationManagment ()
         {
             cout << clear
                  << "Operation canclled";
-            this_thread::sleep_for(chrono::seconds(2));
+                 pause(2);
+            
             break;
         }
 
@@ -113,7 +119,7 @@ void User::infomationManagment ()
             {
                 cout << clear
                      << "Operation canclled";
-                this_thread::sleep_for(chrono::seconds(2));
+                pause(2);
                 cancelled = true;
                 break;
             }
@@ -130,14 +136,14 @@ void User::infomationManagment ()
         {
             cout << clear
                  << "Operation canclled";
-            this_thread::sleep_for(chrono::seconds(2));
+            pause(2);
             break;
         }
 
         bool updated = this->UpdatePass (old_pass, User_pass);
         if (updated)
         {
-            DatabaseManager::getInstance().saveUser(*this, this->getBalance());
+            UserDAO::saveUser(*this, this->getBalance());
             cout << "User's Password Updated.";
         }
 
@@ -158,7 +164,7 @@ void User::infomationManagment ()
 
         if (this->UpdatePhoneNumber (pass, newUPhone))
         {
-            DatabaseManager::getInstance().saveUser(*this, this->getBalance());
+            UserDAO::saveUser(*this, this->getBalance());
             cout << "User Phone Updated.";
         }
         else

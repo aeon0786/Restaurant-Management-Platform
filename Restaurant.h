@@ -15,13 +15,14 @@ class Restaurant
             phone_number,
             additional_Details;
         int ID;
+        double delivery_fee;
         RestaurantManager *manager = nullptr;
         Menu* menu;
         Status status;
         unsigned int time;
 
     public:
-        Restaurant (string = "", string = "", string = "", int = 0, unsigned int = 0, string = "", Status = Status::Disable);
+        Restaurant (string = "", string = "", string = "", int = 0, double = 0.0, unsigned int = 0, string = "", Status = Status::Disable);
         ~Restaurant();
         
         void addOrder (Order *);
@@ -46,6 +47,7 @@ class Restaurant
         int getID () const;
         Status getStatus () const;
         unsigned int getTime () const;
+        double getDeliveryFee() const;
         
         void displayMenu() const;
         Menu *getMenu () const;

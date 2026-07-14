@@ -1,157 +1,165 @@
 #include "Customer.h"
 #include <limits>
 #include <iomanip>
+#include <cctype>
+#include <chrono>
+#include <thread>
+#include <ctime>
 #include "DatabaseManager.h"
+#include "MemberShipLevel.h"
+#include "mainFunctions.h"
 
 
-Customer::Customer (string name, string pass, Role r) 
+Customer::Customer (string name, string pass, Role r, int initialPoints, string level) 
     : User(name, pass, r),
-    balance(0)
-{}
+    balance(0),
+    points(initialPoints)
+{
+    if (level == "VIP") currentLevel = new VIPLevel();
+    else if(level == "Gold") currentLevel = new GoldLevel();
+    else if(level == "Silver") currentLevel = new SilverLevel();
+    else currentLevel = new NormalLevel();
+}
+Customer::~Customer() 
+{
+    delete currentLevel; 
+}
 void Customer::DisplayOrderHistory () const
 {
-    sqlite3* db = DatabaseManager::getInstance().getDB();
-    sqlite3_stmt* stmt;
-
-    int customerId = DatabaseManager::getInstance().getUserId(this->get_UserName());
-    
-    cout << "\n~~~~~~~~~~~  THANK YOU " << this->getName() << "!  ~~~~~~~~~~~" << endl;
-
-    const char* sql = "SELECT id, restaurant_id, total_price FROM orders WHERE customer_id = ? AND status = 1;";
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
-    {
-        sqlite3_bind_int(stmt, 1, customerId);
-        
-        bool hasOrders = false;
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            hasOrders = true;
-            int orderId = sqlite3_column_int(stmt, 0);
-            int restId = sqlite3_column_int(stmt, 1);
-            double total = sqlite3_column_double(stmt, 2);
-            
-            cout << "Order ID: " << orderId << " | Rest ID: " << restId << " | Total Paid: $" << fixed << setprecision(2) << total << endl;
-            cout << "Items: ";
-            
-            sqlite3_stmt* itemStmt;
-            const char* itemSql = "SELECT m.name FROM order_items oi JOIN menu_items m ON oi.item_id = m.id WHERE oi.order_id = ?;";
-            if (sqlite3_prepare_v2(db, itemSql, -1, &itemStmt, nullptr) == SQLITE_OK) 
-            {
-                sqlite3_bind_int(itemStmt, 1, orderId);
-                while (sqlite3_step(itemStmt) == SQLITE_ROW) 
-                {
-                    cout << reinterpret_cast<const char*>(sqlite3_column_text(itemStmt, 0)) << ", ";
-                }
-                sqlite3_finalize(itemStmt);
-            }
-            cout << "\n---------------------------------------------------------" << endl;
-        }
-        sqlite3_finalize(stmt);
-        
-        if (!hasOrders) {
-            cout << "You have no order history." << endl;
-        }
-    }
+    cout << clear << "~~~~~~~~~~~  THANK YOU " << this->getName() << "!  ~~~~~~~~~~~" << endl;
+    UserDAO::displayCustomerOrderHistory(UserDAO::getUserId(this->get_UserName()));
     cout << "=========================================================" << endl;
+    cout << "\nPress Enter to return to menu...";
+    cin.ignore();
+    cin.get(); 
 }
 void Customer::addBalance (double amount) 
 {
-    sqlite3* db = DatabaseManager::getInstance().getDB();
-    sqlite3_stmt* stmt;
-    int customerId = DatabaseManager::getInstance().getUserId(this->get_UserName());
-
-    const char* sql = "INSERT INTO credit_requests (user_id, amount, status) VALUES (?, ?, 0);";
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, customerId);
-        sqlite3_bind_double(stmt, 2, amount);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-        cout << "[Success] Request for $" << amount << " submitted for admin approval." << endl;
+    if (UserDAO::submitCreditRequest(UserDAO::getUserId(this->get_UserName()), amount))
+    {
+        cout << "Success: Request for $" << amount << " submitted for admin approval." << endl;
+        pause(2);
     }
 }
 void Customer::setBalance(double b) { balance = b; }
-double Customer::getBalance () const { return balance; }
-bool Customer::finalizeOrder (int orderId, sqlite3 *db, sqlite3_stmt *stmt)
-{
-    double totalCartPrice = 0.0;
-    const char* totalSql = "SELECT m.base_price, m.type, m.prep_time FROM order_items oi JOIN menu_items m ON oi.item_id = m.id WHERE oi.order_id = ?;";
-    if (sqlite3_prepare_v2(db, totalSql, -1, &stmt, nullptr) == SQLITE_OK) 
-    {
-        sqlite3_bind_int(stmt, 1, orderId);
-        while (sqlite3_step(stmt) == SQLITE_ROW) 
-        {
-            double base = sqlite3_column_double(stmt, 0);
-            int type = sqlite3_column_int(stmt, 1);
-            int prep = sqlite3_column_int(stmt, 2);
-            totalCartPrice += (type == 0 && prep > 30) ? base * 1.2 : base;
-        }
-        sqlite3_finalize(stmt);
-    }
+void Customer::setLevel(MemberShipLevel *m) 
+{ 
+    if (this->currentLevel == m) return;
 
+    MemberShipLevel* oldLevel = this->currentLevel;
+    
+    this->currentLevel = m;
+
+    delete oldLevel; 
+}
+double Customer::getBalance () const { return balance; }
+bool Customer::finalizeOrder (int orderId)
+{
+    int cus_Id = UserDAO::getUserId(this->get_UserName());
+    double totalCartPrice = OrderDAO::calculateTotal(orderId);
     if (totalCartPrice == 0.0) 
     {
-        cout << "Error: Your cart is empty!" << endl;
+        cout << clear << "Error: Your cart is empty!" << endl;
+        pause(2);
         return false;
     }
-    else if (balance >= totalCartPrice) 
+    
+    int restaurantId = OrderDAO::getRestaurantIdForOrder(orderId);
+    if (restaurantId == -1) 
     {
-        balance -= totalCartPrice;
-                
-        const char* updateOrderSql = "UPDATE orders SET status = 1, total_price = ? WHERE id = ?;";
-        if (sqlite3_prepare_v2(db, updateOrderSql, -1, &stmt, nullptr) == SQLITE_OK) 
+        cout << "Error: Order or Restaurant not found in the database!" << endl;
+        pause(2);
+        return false;
+    }
+    double baseDeliveryCost = 0.0;
+
+    Restaurant *rest = DatabaseManager::getInstance().getRestaurantById(restaurantId);
+    if (rest != nullptr)
+    {
+        baseDeliveryCost = rest->getDeliveryFee();
+        delete rest;
+    }
+
+    double couponDiscountAmount = 0.0;
+    string appliedCouponCode = "";
+    char hasCoupon;
+    cout << clear << "Do you have a discount coupon code? (y/n): ";
+    cin >> hasCoupon;
+
+    int cus_ID = UserDAO::getUserId(this->get_UserName());
+    if (tolower(hasCoupon) == 'y')
+    {
+        string codeInput;
+        cout << "Enter coupon code: ";
+        cin >> codeInput;
+
+        if (UserDAO::validateAndBurnCoupon(cus_ID, codeInput))
         {
-            sqlite3_bind_double(stmt, 1, totalCartPrice);
-            sqlite3_bind_int(stmt, 2, orderId);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
+            couponDiscountAmount = totalCartPrice * 0.1;
+            cout << "Success: Coupon applied! You got an extra 10\% discount." << endl;
+            pause(2);
         }
-        cout << "Success: Payment successful! Total paid: $" << totalCartPrice << endl;
+        else 
+        {
+            cout << "Error: Invalid, already used, or expired coupon code!" << endl;
+            pause(2);
+        }
+    }
+    double discountRate = currentLevel->getDiscountRate();
+    double discountAmount = discountRate * totalCartPrice;
+    double finalDeliveryCost = baseDeliveryCost * currentLevel->getDeliveryCostMultiplier();
+    double priceAfterDiscounts = totalCartPrice - discountAmount - couponDiscountAmount;
+    double finalPrice = priceAfterDiscounts + finalDeliveryCost; 
+    if (finalPrice < 0) finalPrice = 0.0;
+
+    cout << clear;
+    cout << "---------------🧾 ORDER RECEIPT 🧾---------------" << endl
+         << "Base Cart Price:   $" << fixed << setprecision(2) << totalCartPrice << endl
+         << "Level Discount (" << (discountRate * 100) << "%): -$" << discountAmount << endl
+         << "Delivery Cost:     +$" << finalDeliveryCost << endl;
+    if (currentLevel->getDeliveryCostMultiplier() == 0) cout << " (Free VIP Delivery!)" << endl;
+
+    cout << "---------------------------------------------" << endl
+        << "TOTAL TO PAY:      $" << finalPrice << endl
+        << "---------------------------------------------" << endl;
+
+    if (balance >= finalPrice) 
+    {
+        UserDAO::processPaymentAndSaveOrder(cus_ID, orderId, balance, finalPrice, totalCartPrice);
+        balance -= finalPrice;
+                
+        double Price = totalCartPrice + finalDeliveryCost;
+        cout << "Success: Payment successful! Total paid: $" << Price << endl;
+        int earnedPoints = static_cast <int>(Price * currentLevel->getPointsMultiplier());
+
+        cout << "Loyalty: You earned " << earnedPoints << " points from this order!" << endl;
+        this->addPoints(earnedPoints);
+        this->checkAndAwardTimeBadge();
+
         return true;
     } 
     else 
     {
         cout << "Error: Insufficient funds! You need $" << totalCartPrice << " but have $" << balance << endl;
+        pause(2);
         return false;
     }
 }
 void Customer::ordering (Restaurant *Choice) 
 {
-    sqlite3* db = DatabaseManager::getInstance().getDB();
-    sqlite3_stmt* stmt;
-
-    int customerId = DatabaseManager::getInstance().getUserId(this->get_UserName());
+    int customerId = UserDAO::getUserId(this->get_UserName());
     if (customerId == -1) return;
 
-    int orderId = -1;
-    const char* insertOrderSql = "INSERT INTO orders (customer_id, restaurant_id, status, total_price) VALUES (?, ?, 0, 0.0);";
-    if (sqlite3_prepare_v2(db, insertOrderSql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, customerId);
-        sqlite3_bind_int(stmt, 2, Choice->getID());
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            orderId = sqlite3_last_insert_rowid(db);
-        }
-        sqlite3_finalize(stmt);
-    }
-
+    int orderId = OrderDAO::createNewEmptyOrder(customerId, Choice->getID());
     cout << clear << "\nWelcome to " << Choice->getName() << "!" << endl;
 
     bool isOrdering = true;
     while (isOrdering) 
     {
-        cout << "\n--- " << Choice->getName() << " Menu ---" << endl;
-        const char* menuSql = "SELECT id, type, name, description, base_price, prep_time FROM menu_items WHERE restaurant_id = ? AND status = 1;";
-        if (sqlite3_prepare_v2(db, menuSql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_int(stmt, 1, Choice->getID());
-            while (sqlite3_step(stmt) == SQLITE_ROW) {
-                string typeStr = (sqlite3_column_int(stmt, 1) == 0) ? "Food" : "Drink";
-                cout << "Item ID: " << sqlite3_column_int(stmt, 0)
-                     << " | [" << typeStr << "] " << sqlite3_column_text(stmt, 2)
-                     << " | Price: $" << sqlite3_column_double(stmt, 4) << endl;
-            }
-            sqlite3_finalize(stmt);
-        }
+        cout << clear << "--- " << Choice->getName() << " Menu ---" << endl;
+        RestaurantDAO::displayMenuForCustomer(Choice->getID());
 
-        cout << "\nOptions:" << endl
+        cout << "Options:" << endl
              << "1. Add Item to Cart" << endl
              << "2. Move Item from Cart" << endl
              << "3. Finalize & Pay" << endl
@@ -160,6 +168,11 @@ void Customer::ordering (Restaurant *Choice)
         
         int action;
         cin >> action;
+        if (cin.fail()) 
+        {
+            cin.clear(); cin.ignore(10000, '\n');
+            continue;
+        }
 
         switch (action)
         {
@@ -168,92 +181,63 @@ void Customer::ordering (Restaurant *Choice)
             int itemId;
             cout << "Enter Item ID to add: ";
             cin >> itemId;
-
-            const char* itemCheckSql = "SELECT name FROM menu_items WHERE id = ? AND restaurant_id = ? AND status = 1;";
-            bool itemValid = false;
-            
-            if (sqlite3_prepare_v2(db, itemCheckSql, -1, &stmt, nullptr) == SQLITE_OK) 
+            if (cin.fail()) 
             {
-                sqlite3_bind_int(stmt, 1, itemId);
-                sqlite3_bind_int(stmt, 2, Choice->getID());
-                if (sqlite3_step(stmt) == SQLITE_ROW) 
-                {
-                    itemValid = true;
-                }
-                sqlite3_finalize(stmt);
+                cin.clear(); cin.ignore(10000, '\n');
+                continue;
             }
 
-            if (itemValid) {
-                const char* insertItemSql = "INSERT INTO order_items (order_id, item_id) VALUES (?, ?);";
-                if (sqlite3_prepare_v2(db, insertItemSql, -1, &stmt, nullptr) == SQLITE_OK) 
+            if (RestaurantDAO::checkItemAvailability(Choice->getID(), itemId))
+            {
+                if (OrderDAO::addItemToOrder(orderId, itemId))
                 {
-                    sqlite3_bind_int(stmt, 1, orderId);
-                    sqlite3_bind_int(stmt, 2, itemId);
-                    sqlite3_step(stmt);
-                    sqlite3_finalize(stmt);
                     cout << "Success: Item added to cart!" << endl;
+                    pause(2);
                 }
             }
             else 
             {
                 cout << "Error: Item is currently unavailable or invalid!" << endl;
+                pause(2);
             }
             break;
         }
         case 2: 
         {
             int removeId;
-            cout << "Enter Item ID to Remove from Cart: ";
+            cout << clear << "Enter Item ID to Remove from Cart: ";
             cin >> removeId;
-
-            const char *remove = "DELETE FROM order_items WHERE rowid = (SELECT rowid FROM order_items WHERE order_id = ? AND item_id = ? LIMIT 1);";
-            
-            if (sqlite3_prepare_v2(db, remove, -1, &stmt, nullptr) == SQLITE_OK) 
+            if (cin.fail()) 
             {
-                sqlite3_bind_int(stmt, 1, orderId);
-                sqlite3_bind_int(stmt, 2, removeId);
-                
-                if (sqlite3_step(stmt) == SQLITE_DONE) 
-                {
-                    if (sqlite3_changes(db) > 0) 
-                    {
-                        cout << "Success: Item removed from cart." << endl;
-                    } 
-                    else 
-                    {
-                        cout << "Error: This item was not found in your cart!" << endl;
-                    }
-                }
-                sqlite3_finalize(stmt);
+                cin.clear(); cin.ignore(10000, '\n');
+                continue;
+            }
+
+            if (OrderDAO::removeItemFromOrder(orderId, removeId))
+            {
+                cout << "Success: Item removed from cart." << endl;
+                pause(2);
+            } 
+            else 
+            {
+                cout << "Error: This item was not found in your cart!" << endl;
+                pause(2);
             }
             break;
         }
         case 3:
         {
-            if (finalizeOrder(orderId, db, stmt))
+            if (finalizeOrder(orderId))
             {
                 isOrdering = false;
             }
-            else cout << "Error: Empty Cart/Insufficient Account Balance" << endl;
             break;
         }
         case 4:
         {
-            const char* deleteItemsSql = "DELETE FROM order_items WHERE order_id = ?;";
-            if (sqlite3_prepare_v2(db, deleteItemsSql, -1, &stmt, nullptr) == SQLITE_OK) 
-            {
-                sqlite3_bind_int(stmt, 1, orderId);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-            }
-            const char* deleteOrderSql = "DELETE FROM orders WHERE id = ?;";
-            if (sqlite3_prepare_v2(db, deleteOrderSql, -1, &stmt, nullptr) == SQLITE_OK) 
-            {
-                sqlite3_bind_int(stmt, 1, orderId);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-            }
+            OrderDAO::cancelOrder(orderId);
             cout << "Note: Order cancelled." << endl;
+            pause(2);
             isOrdering = false;
             break;
         }
@@ -267,23 +251,14 @@ void Customer::handleNewOrder ()
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
 
-    cout << "\n--- Active Restaurants ---" << endl;
+    cout << clear << "--- Active Restaurants ---" << endl;
     const char* restSql = "SELECT id, name FROM restaurants WHERE status = 1;";
-    int restCount = 0;
-    
-    if (sqlite3_prepare_v2(db, restSql, -1, &stmt, nullptr) == SQLITE_OK) 
-    {
-        while (sqlite3_step(stmt) == SQLITE_ROW) 
-        {
-            cout << "ID: " << sqlite3_column_int(stmt, 0) 
-                 << " | " << sqlite3_column_text(stmt, 1) << endl;
-            restCount++;
-        }
-        sqlite3_finalize(stmt);
-    }
+    int restCount = SystemDAO::displayActiveRestaurants();
 
-    if (restCount == 0) {
-        cout << "[Notice] No active restaurants available right now. Please try again later." << endl;
+    if (restCount == 0) 
+    {
+        cout << "Note: No active restaurants available right now. Please try again later." << endl;
+        pause(2);
         return; // رستوران فعالی نیست
     }
 
@@ -316,8 +291,9 @@ void Customer::handleWallet()
         << "1.Add Balance" << endl
         << "2.Exit" << endl
         << "Select: ";
-    int action;
+    int action = -1;
     cin >> action;
+    
     if (action > 2 || action < 0)
     {
         bool flag = false;
@@ -325,6 +301,11 @@ void Customer::handleWallet()
         {
             cout << "Invalid inpupt\nTry Again: ";
             cin >> action;
+            if (cin.fail())
+            {
+                cin.clear(); cin.ignore(10000, '\n');
+                continue;
+            }
             if (action > 0 && action < 3) flag = true;
             else cout << clear;
         }
@@ -348,38 +329,65 @@ void Customer::displayDashboard()
     if (DatabaseManager::getInstance().getDB() == nullptr)
     {
         cout << clear << "Error: Database connection is not established! Please check the database file." << endl;
+        pause(2);
+    
         return; 
     }
     bool loggedIn = true;
 
     while(loggedIn)
     {
-        int choice;
+        int choice = -1;
 
+        int nextThresh = currentLevel->getNextThreshold();
+        string progressStr = "";
+        
+        if (nextThresh == -1) 
+        {
+            progressStr = "[Max Level Reached!]";
+        } 
+        else 
+        {
+            progressStr = to_string(nextThresh - points) + " points to next level";
+        }
         cout << clear
             << "\n=================================================" << endl
             << "       CUSTOMER DASHBOARD - Welcome " << this->getName() << "!" << endl
-            << "       Wallet Balance: $" << getBalance() << endl
+            << "=================================================" << endl
+            << "  Badge:  [" << currentLevel->getLevelName() << " Member]" << endl
+            << "  Points: " << points << " (" << progressStr << ")" << endl
+            << "  Wallet Balance: $" << getBalance() << endl
             << "=================================================" << endl;
-        
+            
         cout << "1.New Order" << endl
             << "2.View Order History" << endl
             << "3.Manage Wallet" << endl
             << "4.User information management" << endl
-            << "5.Logout" << endl
+            << "5.View My Coupons" << endl
+            << "6.Claim Monthly Coupons" << endl
+            << "7.View My Badges" << endl
+            << "8.Logout" << endl
             << "=================================================" << endl
             << "Enter your choice: ";
         
         cin >> choice;
-        cin.ignore();
+        if (cin.fail()) 
+        {
+            cin.clear(); cin.ignore(10000, '\n');
+            continue;
+        }
 
+        int uID = UserDAO::getUserId(this->get_UserName());
         switch (choice)
         {
             case 1: handleNewOrder(); break;
             case 2: DisplayOrderHistory(); break;
             case 3: handleWallet(); break;
             case 4: this->infomationManagment(); break;
-            case 5:
+            case 5: UserDAO::displayUserCoupons(uID); break;
+            case 6: UserDAO::allocateMonthlyCoupons(uID, currentLevel->getMonthlyCouponCount(), currentLevel->getLevelName()); break;
+            case 7: this->displayMyBadges(); break;
+            case 8:
                 cout << clear << "Logging out of Customer Dashboard..." << endl;
                 loggedIn = false;
                 break;
@@ -390,18 +398,96 @@ void Customer::displayDashboard()
 }
 unsigned int Customer::totalOrders () const 
 {
-    sqlite3* db = DatabaseManager::getInstance().getDB();
-    sqlite3_stmt* stmt;
-    int count = 0;
-    int customerId = DatabaseManager::getInstance().getUserId(this->get_UserName());
-
-    const char* sql = "SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status = 1;";
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, customerId);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            count = sqlite3_column_int(stmt, 0);
-        }
-        sqlite3_finalize(stmt);
+    return UserDAO::getCustomerTotalOrders(UserDAO::getUserId(this->get_UserName()));    
+}
+int Customer::getPoints() const { return points; }
+MemberShipLevel *Customer::getLevel() const { return currentLevel; }
+void Customer::addPoints(int p) 
+{
+    this->points += p;
+    if (this->currentLevel != nullptr)
+    {
+        this->currentLevel->changeLevel(this);
     }
-    return count;    
+    int customerId = UserDAO::getUserId(this->get_UserName());
+    if (customerId != -1) 
+    {
+        UserDAO::updateLoyaltyData(customerId, this->points, this->currentLevel->getLevelName());
+    }
+}
+void Customer::deductPoints(int p)
+{
+    this->points -= p;
+    if (this->points < 0) this->points = 0;
+    if (this->currentLevel != nullptr)
+    {
+        this->currentLevel->changeLevel(this);
+    }
+    int customerId = UserDAO::getUserId(this->get_UserName());
+    if (customerId != -1) {
+        UserDAO::updateLoyaltyData(customerId, this->points, this->currentLevel->getLevelName());
+    }
+}
+void Customer::checkAndAwardTimeBadge()
+{
+    auto time = chrono::system_clock::now();
+    time_t currentTime = chrono::system_clock::to_time_t(time);
+    tm *localTime = localtime(&currentTime);
+    int hour = localTime->tm_hour;
+
+    vector <Badge> availableBadges = 
+    {
+        Badge("Night Owl 🦉", "Ordering food past midnight!", 0, 5),
+        Badge("Early Bird 🌅", "Breakfast champion!", 5, 9),
+        Badge("Lunch Rush 🍔", "Right on time for the peak hours!", 12, 15)
+    };
+
+    for (const auto &badge : availableBadges) 
+    {
+        if (badge.isDesired(currentTime)) 
+        {
+
+            if (!UserDAO::hasBadge(this->getInternalId(), badge.getName())) 
+            {
+                cout << clear << "============================================" << endl
+                     << "NEW BADGE UNLOCKED!: " << badge.getName() << endl
+                     << badge.getDesc() << endl
+                     << "============================================" << endl;
+                cout << "\nPress Enter to return to menu...";
+                cin.ignore();
+                cin.get(); 
+                UserDAO::saveBadge(this->getInternalId(), badge.getName());
+            }
+            else 
+            {
+                cout << clear << "Time Match: " << badge.getName() << " time! (You already own this badge)" << endl;
+            }
+            break;
+        }
+    }
+}
+void Customer::displayMyBadges()
+{
+    cout << clear << "============================================" << endl
+         << "          🏅 MY ACHIEVEMENTS 🏅          " << endl
+         << "============================================" << endl;
+    
+    vector<string> myBadges = UserDAO::getUserBadges(this->getInternalId());
+
+    if (myBadges.empty()) 
+    {
+        cout << " ❌ You haven't unlocked any badges yet." << endl
+             << "    Order at different times to earn some!" << endl;
+    } 
+    else 
+    {
+        for (const auto& b : myBadges) 
+        {
+            cout << "  ⭐ " << b << endl;
+        }
+    }
+    cout << "============================================" << endl;
+    cout << "\nPress Enter to return to menu...";
+    cin.ignore();
+    cin.get(); 
 }

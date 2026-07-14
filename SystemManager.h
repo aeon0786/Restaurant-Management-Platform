@@ -20,4 +20,7 @@ class SystemManager : public User
         SystemManager (string, string, Role);
 
         void displayDashboard();
+        void displayLevelStatistics();
+        void viewLevelLogs();
+        void manageUserLoyaltyPanel();
 };
