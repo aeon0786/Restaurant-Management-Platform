@@ -7,6 +7,8 @@
 #include "Restaurant.h"
 #include "Order.h"
 #include "mainFunctions.h"
+#include "Order.h"
+#include "User.h"
 
 enum class OrderStatus;
 
@@ -82,6 +84,8 @@ void DatabaseManager::createTables()
         "restaurant_id INTEGER NOT NULL,"
         "status INTEGER NOT NULL,"
         "total_price REAL,"
+        "paid_amount REAL DEFAULT 0.0,"
+        "points_earned INTEGER DEFAULT 0,"
         "order_time DATETIME DEFAULT (DATETIME('now', 'localtime')),"
         "FOREIGN KEY(customer_id) REFERENCES users(id) ON DELETE CASCADE,"
         "FOREIGN KEY(restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE"
@@ -223,7 +227,7 @@ void UserDAO::displayUserCoupons(int userId)
     cout << "--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--" << endl;
 
     cout << "\nPress Enter to return to menu...";
-    cin.ignore();
+    clearInputLine();
     cin.get(); 
 }
 bool UserDAO::saveUser(const User &user, double balance, int points, const string &level)
@@ -231,7 +235,7 @@ bool UserDAO::saveUser(const User &user, double balance, int points, const strin
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
 
-    const char *sql = "INSERT OR REPLACE INTO users (username, password, name, phone_number, role, balance, points, current_level) "
+    const char *sql = "INSERT INTO users (username, password, name, phone_number, role, balance, points, current_level) "
                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
     
     
@@ -255,40 +259,91 @@ bool UserDAO::saveUser(const User &user, double balance, int points, const strin
     
     return (rc == SQLITE_DONE);
 }
+bool UserDAO::updateUser(const User &user, double balance, int points, const string &level)
+{
+    sqlite3 *db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt *stmt;
+
+    const char *sql = "UPDATE users SET username = ?, password = ?, name = ?, phone_number = ?, role = ?, balance = ?, points = ?, current_level = ? WHERE id = ?;";  
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) 
+    {
+        std::cerr << "Failed to prepare save statement: " << sqlite3_errmsg(db) << std::endl;
+        return false;
+    }
+    
+    sqlite3_bind_text(stmt, 1, user.get_UserName().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, user.getUserPassword().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, user.getName().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, user.getphoneNumber().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 5, static_cast<int>(user.getRole()));
+    sqlite3_bind_double(stmt, 6, balance);
+    sqlite3_bind_int(stmt, 7, points);
+    sqlite3_bind_text(stmt, 8, level.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 9, user.getInternalId());
+
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    
+    return (rc == SQLITE_DONE);
+}
+bool UserDAO::updateUserProfile(const User &user)
+{
+    sqlite3 *db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt *stmt;
+    const char *sql = "UPDATE users SET username = ?, password = ?, name = ?, phone_number = ? WHERE id = ?;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) 
+    {
+        std::cerr << "Failed to prepare update statement: " << sqlite3_errmsg(db) << std::endl;
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, user.get_UserName().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, user.getUserPassword().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, user.getName().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, user.getphoneNumber().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 5, user.getInternalId());
+
+    int rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_DONE);
+}
 UserDAO::UserData UserDAO::authenticateUser(const string &username, const string &password)
 {
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
 
     UserData data;
-    const char *sql = "SELECT username, password, name, phone_number, role, balance, points, current_level FROM users WHERE username = ?;";
+    const char *sql = "SELECT id, username, password, name, phone_number, role, balance, points, current_level FROM users WHERE username = ?;";
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) return data;
-    
+
     sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
-    
+
     if (sqlite3_step(stmt) == SQLITE_ROW) 
     {
-        string db_password = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        string db_password = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
         if (db_password == password) 
         {
             data.success = true;
+            data.id = sqlite3_column_int(stmt, 0);
             data.username = username;
             data.password = db_password;
-            data.name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-            const char *phoneRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+            data.name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+            const char *phoneRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
             data.phone = phoneRaw ? phoneRaw : ""; 
-            data.roleNum = sqlite3_column_int(stmt, 4);
-            data.balance = sqlite3_column_double(stmt, 5);
-            data.points = sqlite3_column_int(stmt, 6);
-            const char *levelRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 7));
+            data.roleNum = sqlite3_column_int(stmt, 5);
+            data.balance = sqlite3_column_double(stmt, 6);
+            data.points = sqlite3_column_int(stmt, 7);
+            const char *levelRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 8));
             data.current_level = levelRaw ? levelRaw : "Normal";
         }
     }
     sqlite3_finalize(stmt);
     return data;
 }
-bool UserDAO::updateLoyaltyData(int userId, int newPoints, const std::string &newLevel) {
+bool UserDAO::updateLoyaltyData(int userId, int newPoints, const string &newLevel) {
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
     const char *sql = "UPDATE users SET points = ?, current_level = ? WHERE id = ?;";
@@ -377,7 +432,7 @@ void UserDAO::displayCustomerOrderHistory(int customerId)
 {
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT id, restaurant_id, total_price FROM orders WHERE customer_id = ? AND status = 1;";
+    const char *sql = "SELECT id, restaurant_id, total_price FROM orders WHERE customer_id = ? AND status IN (1,2,3,4);";
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
@@ -426,7 +481,7 @@ int UserDAO::getCustomerTotalOrders(int customerId)
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
     int count = 0;
-    const char *sql = "SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status = 1;";
+    const char *sql = "SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status IN (1,2,3);";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_int(stmt, 1, customerId);
         if (sqlite3_step(stmt) == SQLITE_ROW) count = sqlite3_column_int(stmt, 0);
@@ -538,16 +593,26 @@ bool UserDAO::processCreditRequest(int reqId, bool approve)
 
     if (approve) 
     {
-        const char *addCreditSql = "+`-+` users SET balance = balance + (SELECT amount FROM credit_requests WHERE id = ?) "
-                                   "WHERE id = (SELECT user_id FROM credit_requests WHERE id = ?);";
-        if (sqlite3_prepare_v2(db, addCreditSql, -1, &stmt, nullptr) == SQLITE_OK) 
-        {
+        double amount = 0;
+        int userId = -1;
+        const char* getInfo = "SELECT amount, user_id FROM credit_requests WHERE id = ? AND status = 0;";
+        if (sqlite3_prepare_v2(db, getInfo, -1, &stmt, nullptr) == SQLITE_OK) {
             sqlite3_bind_int(stmt, 1, reqId);
-            sqlite3_bind_int(stmt, 2, reqId);
-            if (sqlite3_step(stmt) != SQLITE_DONE) success = false;
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                amount = sqlite3_column_double(stmt, 0);
+                userId = sqlite3_column_int(stmt, 1);
+            } else success = false;
             sqlite3_finalize(stmt);
-        } else {
-            success = false;
+        } else success = false;
+
+        if (success) {
+            const char *addCreditSql = "UPDATE users SET balance = balance + ? WHERE id = ?;";
+            if (sqlite3_prepare_v2(db, addCreditSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_double(stmt, 1, amount);
+                sqlite3_bind_int(stmt, 2, userId);
+                if (sqlite3_step(stmt) != SQLITE_DONE) success = false;
+                sqlite3_finalize(stmt);
+            } else success = false;
         }
     }
 
@@ -559,21 +624,12 @@ bool UserDAO::processCreditRequest(int reqId, bool approve)
         {
             sqlite3_bind_int(stmt, 1, newStatus);
             sqlite3_bind_int(stmt, 2, reqId);
-            
-            if (sqlite3_step(stmt) != SQLITE_DONE || sqlite3_changes(db) == 0) 
-            {
-                success = false; 
-            }
+            if (sqlite3_step(stmt) != SQLITE_DONE || sqlite3_changes(db) == 0) success = false; 
             sqlite3_finalize(stmt);
-        } 
-        else 
-        {
-            success = false;
-        }
+        } else success = false;
     }
 
-    if (success) 
-    {
+    if (success) {
         sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
         return true;
     } else {
@@ -609,7 +665,7 @@ bool UserDAO::validateAndBurnCoupon(int userId, const string& code)
     return isValid;
 }
 
-void UserDAO::processPaymentAndSaveOrder(int userId, int orderId, double currentBalance, double finalPrice, double cartPrice) 
+void UserDAO::processPaymentAndSaveOrder(int userId, int orderId, double currentBalance, double finalPrice, double cartPrice,  int earnedPoints) 
 {
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
@@ -621,10 +677,13 @@ void UserDAO::processPaymentAndSaveOrder(int userId, int orderId, double current
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
-    const char *updateOrder = "UPDATE orders SET status = 1, total_price = ? WHERE id = ?;";
+    const char *updateOrder = 
+        "UPDATE orders SET status = 1, total_price = ?, paid_amount = ?, points_earned = ? WHERE id = ?;";
     if (sqlite3_prepare_v2(db, updateOrder, -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_double(stmt, 1, cartPrice); 
-        sqlite3_bind_int(stmt, 2, orderId);
+        sqlite3_bind_double(stmt, 2, finalPrice);
+        sqlite3_bind_int(stmt, 3, earnedPoints);
+        sqlite3_bind_int(stmt, 4, orderId);
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
@@ -749,15 +808,16 @@ void RestaurantDAO::displayMenuItems(int restaurantId)
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
         sqlite3_bind_int(stmt, 1, restaurantId);
+        cout << clear << left << setw(4) << "ID" 
+                 << left << setw(10) << " | Itme's Name" 
+                 << left << setw(10) << " | Price"
+                 << left << setw(10) << " | Status" << endl;
+
         while (sqlite3_step(stmt) == SQLITE_ROW) 
         {
-            cout << clear << left << setw(10) << "ID" 
-                 << left << setw(10) << "| Itme's Name" 
-                 << left << setw(10) << "| Price: $"
-                 << left << setw(10) << "| Status" << endl
-                 << left << setw(10) << sqlite3_column_int(stmt, 0) 
+            cout << left << setw(4) << sqlite3_column_int(stmt, 0) 
                  << left << setw(10) << sqlite3_column_text(stmt, 1) 
-                 << left << setw(10) << sqlite3_column_double(stmt, 2)
+                 << left << setw(10) << sqlite3_column_double(stmt, 2) << "$  "
                  << left << setw(10) << (sqlite3_column_int(stmt, 3) ? "Available" : "Unavailable") << endl;
         }
         sqlite3_finalize(stmt);
@@ -795,7 +855,7 @@ void RestaurantDAO::displayOrderHistory(int restaurantId)
         while (sqlite3_step(stmt) == SQLITE_ROW) 
         {
             int stLevel = sqlite3_column_int(stmt, 3);
-            string stString = (stLevel == 1) ? "Registered" : (stLevel == 2) ? "Preparing" : "Delivered";
+            string stString = orderStatusToString(static_cast<OrderStatus>(stLevel));
             cout << "Order ID: " << sqlite3_column_int(stmt, 0)
                  << " | Customer: " << sqlite3_column_text(stmt, 1)
                  << " | Total: $" << fixed << setprecision(2) << sqlite3_column_double(stmt, 2)
@@ -888,21 +948,6 @@ double OrderDAO::calculateTotal(int orderId)
     }
     return total;
 }
-bool OrderDAO::deleteOrderFromRestaurant(int restaurantId, int orderId)
-{
-    sqlite3 *db = DatabaseManager::getInstance().getDB();
-    sqlite3_stmt *stmt;
-    const char *sql = "DELETE FROM orders WHERE id = ? AND restaurant_id = ?;";
-    bool success = false;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
-    {
-        sqlite3_bind_int(stmt, 1, orderId);
-        sqlite3_bind_int(stmt, 2, restaurantId);
-        if (sqlite3_step(stmt) == SQLITE_DONE) success = true;
-        sqlite3_finalize(stmt);
-    }
-    return success;
-}
 bool OrderDAO::updateOrderTotalPrice(int orderId, double price)
 {
     sqlite3 *db = DatabaseManager::getInstance().getDB();
@@ -966,7 +1011,7 @@ int OrderDAO::countRestaurantOrders(int restaurantId)
     int count = 0;
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND status != 0;";
+    const char *sql = "SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND status IN (1,2,3);";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
         sqlite3_bind_int(stmt, 1, restaurantId);
@@ -980,7 +1025,7 @@ double OrderDAO::calculateRestaurantSales(int restaurantId)
     double total = 0.0;
     sqlite3 *db = DatabaseManager::getInstance().getDB();
     sqlite3_stmt *stmt;
-    const char *sql = "SELECT SUM(total_price) FROM orders WHERE restaurant_id = ? AND status != 0;";
+    const char *sql = "SELECT SUM(total_price) FROM orders WHERE restaurant_id = ? AND status IN (1,2,3);";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
         sqlite3_bind_int(stmt, 1, restaurantId);
@@ -1096,11 +1141,14 @@ int SystemDAO::displayRestaurantsWithManagers()
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
+        cout << left << setw(4) << "ID" 
+            << left << setw(10) << "| Name" 
+            << left << setw(10) << "| Manager" << endl;
+            
         while (sqlite3_step(stmt) == SQLITE_ROW) 
         {
-            cout << left << setw(10) << "ID" << left << setw(10) << "| Name" << left << setw(10) << "| Manager" << endl
-                << left << setw(10) << sqlite3_column_int(stmt, 0) 
-                << left << setw(10) << sqlite3_column_text(stmt, 1)
+            cout << left << setw(4) << sqlite3_column_int(stmt, 0) 
+                << left << setw(10) << sqlite3_column_text(stmt, 1) << "  "
                 << left << setw(10) << sqlite3_column_text(stmt, 2) << endl;
             count++;
         }
@@ -1218,6 +1266,9 @@ void SystemDAO::displayGeneralReports()
          << "Total Orders Processed       : " << totalOrders << " orders" << endl
          << "Total Platform Revenue       : $" << fixed << setprecision(2) << totalSales << endl
          << "========================================================" << endl;
+
+    cout << "Press enter to skip and go back....";
+    cin.get();
 }
 
 void SystemDAO::displayUserActivity() 
@@ -1240,6 +1291,8 @@ void SystemDAO::displayUserActivity()
         sqlite3_finalize(stmt);
     }
     cout << "======================================================" << endl;
+    cout << "Press enter to skip and go back....";
+    cin.get();
 }
 void SystemDAO::displayUsersByLevel() 
 {
@@ -1247,7 +1300,7 @@ void SystemDAO::displayUsersByLevel()
     sqlite3_stmt *stmt;
     const char *sql = "SELECT current_level, COUNT(*) FROM users WHERE role = 1 GROUP BY current_level;";
     
-    cout << "\n================ USERS BY LEVEL ================" << endl;
+    cout << clear << "================ USERS BY LEVEL ================" << endl;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -1359,7 +1412,7 @@ bool SystemDAO::isUserARestaurantManager(int userId) {
         
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             int role = sqlite3_column_int(stmt, 0);
-            // تبدیل Enum نقش مدیر به عدد برای مقایسه با دیتابیس
+
             if (role == static_cast<int>(Role::RestaurantManager)) {
                 isValid = true;
             }
@@ -1378,14 +1431,17 @@ int SystemDAO::displayActiveRestaurants()
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) 
     {
+        cout << left << setw(4) << "ID" 
+            << left << setw(10) << " | Name" 
+            << left << setw(10)<< " | Address"  << endl;
+
         while (sqlite3_step(stmt) == SQLITE_ROW) 
         {
             int id = sqlite3_column_int(stmt, 0);
             const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
             const char* address = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
 
-            cout << left << setw(10) << "ID" << left << setw(10) << "| Name" << left << setw(10)<< "| Address"  << endl
-                 << left << setw(10) << id 
+            cout << left << setw(4) << id 
                  << left << setw(10) << name 
                  << left << setw(10) << (address ? address : "No Address") << endl;
             
@@ -1394,4 +1450,59 @@ int SystemDAO::displayActiveRestaurants()
         sqlite3_finalize(stmt);
     }
     return restCount;
+}
+bool SystemDAO::getUserLoyaltyInfo(int userId, int &points, string &level) 
+{
+    sqlite3 *db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt *stmt;
+    bool found = false;
+    const char *sql = "SELECT points, current_level FROM users WHERE id = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        sqlite3_bind_int(stmt, 1, userId);
+        if (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            points = sqlite3_column_int(stmt, 0);
+            const char* lvl = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            level = lvl ? lvl : "Normal";
+            found = true;
+        }
+        sqlite3_finalize(stmt);
+    }
+    return found;
+}
+bool OrderDAO::cancelPaidOrder(int orderId, int &outCustomerId, double &outRefund, int &outPoints)
+{
+    sqlite3 *db = DatabaseManager::getInstance().getDB();
+    sqlite3_stmt *stmt;
+
+    const char *selectSql = "SELECT customer_id, paid_amount, points_earned FROM orders WHERE id = ? AND status IN (1, 2);";
+    if (sqlite3_prepare_v2(db, selectSql, -1, &stmt, nullptr) != SQLITE_OK) return false;
+    sqlite3_bind_int(stmt, 1, orderId);
+    if (sqlite3_step(stmt) != SQLITE_ROW) { sqlite3_finalize(stmt); return false; }
+
+    outCustomerId = sqlite3_column_int(stmt, 0);
+    outRefund     = sqlite3_column_double(stmt, 1);
+    outPoints     = sqlite3_column_int(stmt, 2);
+    sqlite3_finalize(stmt);
+
+    sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
+
+    const char *updStatus = "UPDATE orders SET status = ? WHERE id = ?;";
+    sqlite3_prepare_v2(db, updStatus, -1, &stmt, nullptr);
+    sqlite3_bind_int(stmt, 1, static_cast<int>(OrderStatus::CANCELLED)); 
+    sqlite3_bind_int(stmt, 2, orderId);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    const char *refundSql = "UPDATE users SET balance = balance + ?, points = MAX(0, points - ?) WHERE id = ?;";
+    sqlite3_prepare_v2(db, refundSql, -1, &stmt, nullptr);
+    sqlite3_bind_double(stmt, 1, outRefund);
+    sqlite3_bind_int(stmt, 2, outPoints);
+    sqlite3_bind_int(stmt, 3, outCustomerId);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
+    return true;
 }

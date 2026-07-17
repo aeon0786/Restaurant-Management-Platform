@@ -40,6 +40,13 @@ void registerationBanner()
 }
 bool Registeration(const string &name, const string &user_name, const string &pass, int choice)
 {
+    if (UserDAO::getUserId(user_name) != -1)
+    {
+        cout << clear << "Error: The username \"" << user_name << "\" is already taken!" << endl;
+        cout << "Please choose another username." << endl;
+        pause(2);
+        return false;
+    }
     Role role;
     if (choice == 1) role = Role::Customer;
     else if (choice == 2) role = Role::RestaurantManager;
@@ -99,26 +106,29 @@ User* Login ()
         case (Role::SystemAdmin):
         {
             SystemManager* admin = new SystemManager(data.username, data.password, role);
+            admin->setInternalId(data.id);
             admin->setName(data.name);
             cout << clear << "Welcome " << admin->getName() << "You have a tough job ahead of you!." << endl;
-            this_thread::sleep_for(chrono::seconds(1));
+            pause(1);
             return admin;
         }
         case (Role::RestaurantManager):
         {
             RestaurantManager* mgr = new RestaurantManager(data.username, data.password, role);
+            mgr->setInternalId(data.id);
             mgr->setName(data.name);
             cout << clear << "Welcome Manager " << mgr->getName() << "!" << endl;
-            this_thread::sleep_for(chrono::seconds(1));
+            pause(1);
             return mgr;
         }
         case (Role::Customer):
         {
             Customer *customer = new Customer(data.username, data.password, role, data.points, data.current_level);
+            customer->setInternalId(data.id);
             customer->setName(data.name);
             customer->setBalance(data.balance);
             cout << clear << "Welcome " << customer->getName() << "Have a good shopping! ... " << endl;
-            this_thread::sleep_for(chrono::seconds(1));
+            pause(1);
             return customer;
         }
         default:
@@ -136,9 +146,6 @@ void displayDaushboards (User *user)
         SystemManager* admin = dynamic_cast <SystemManager*>(user);
         if (admin) 
         {
-            cout << clear 
-                 << "Welcome " << admin->getName() << "You have a tough job ahead.\n";
-            this_thread::sleep_for(chrono::seconds(1));
             admin->displayDashboard();
         }
         break;
@@ -148,10 +155,6 @@ void displayDaushboards (User *user)
         RestaurantManager * manager = dynamic_cast <RestaurantManager*>(user);
         if (manager)
         {
-            cout << clear
-                 << "Welcome Manager " << manager->getName() << "!" << endl;
-            this_thread::sleep_for(chrono::seconds(1));
-
             int userId = UserDAO::getUserId(manager->get_UserName());
 
             Restaurant* rest = DatabaseManager::getInstance().getRestaurantByManagerId(userId); 
@@ -174,9 +177,6 @@ void displayDaushboards (User *user)
         Customer * customer = dynamic_cast <Customer *> (user);
         if (customer)
         {
-            cout << clear 
-                 << "Welcome " << customer->getName() << "! Have a good shopping..." << endl;
-            this_thread::sleep_for(chrono::seconds(1));
             customer->displayDashboard();
         }
         break;
@@ -187,4 +187,9 @@ void displayDaushboards (User *user)
         pause(2);
         break;
     }
+}
+void clearInputLine()
+{
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 }

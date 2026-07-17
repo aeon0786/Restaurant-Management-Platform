@@ -15,3 +15,4 @@ void registerationBanner();
 bool Registeration(const string &, const string &, const string &, int);
 User* Login ();
 void displayDaushboards (User *);
+void clearInputLine();

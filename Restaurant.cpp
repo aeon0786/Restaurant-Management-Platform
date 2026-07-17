@@ -20,20 +20,6 @@ Restaurant::Restaurant (string res_name, string res_address, string res_phone, i
 }
 
 Restaurant::~Restaurant () { delete menu; }
-void Restaurant::removeOrder(unsigned int id) 
-{
-    if (OrderDAO::deleteOrderFromRestaurant(this->getID(), id))
-    {
-        cout << clear << "Success: Order Removed!" << endl;
-        pause(2);
-    }
-    else 
-    {
-        cout << clear << "Fail:Order Removal Failed" << endl;
-        pause(2);
-    }
-}
-
 Order *Restaurant::findOrder (int id) const
 {
     OrderStatus st = OrderDAO::getOrderStatus(id, this->getID());

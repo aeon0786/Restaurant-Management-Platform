@@ -35,18 +35,14 @@ void SystemManager::displayDashboard ()
              << "8. View Level History Logs" << endl
              << "9. Manage User Loyalty (Manual)" << endl
              << "10. User information management" << endl
-             << "11. Logout" << endl
+             << "11. Cancel Current Order" << endl
+             << "12. Logout" << endl
              << "=================================================" << endl
              << "Enter your choice: ";
 
         int choice;
         cin >> choice;
-        if (cin.fail())
-        {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            choice = -1;
-        }
+        clearInputLine();
 
         switch (choice)
         {
@@ -67,7 +63,6 @@ void SystemManager::displayDashboard ()
             {
                 viewLevelLogs();
                 cout << "\nPress Enter to return to menu...";
-                cin.ignore();
                 cin.get(); 
                 break;
             }
@@ -75,12 +70,12 @@ void SystemManager::displayDashboard ()
             {
                 manageUserLoyaltyPanel();
                 cout << "\nPress Enter to return to menu...";
-                cin.ignore();
                 cin.get(); 
                 break;
             }
             case 10: this->infomationManagment(); break;
-            case 11:
+            case 11: this->cancelOrder(); break;
+            case 12:
                 cout << clear
                      << "Logging out of Admin Dashboard..." << endl;
                 loggedIn = false;
@@ -110,7 +105,7 @@ void SystemManager::registerNewRestaurant()
 
     cout << "Enter Average Prep Time (mins): ";
     cin >> r_time;
-    cin.ignore();
+    clearInputLine();
 
     cout << "Enter Additional Details/Description: ";
     getline(cin, r_details);
@@ -272,24 +267,34 @@ void SystemManager::manageUserLoyaltyPanel()
     int userId;
     cin >> userId;
 
-    int newPoints;
-    string newLevel, oldLevel;
-    
+    int oldPoints;
+    string oldLevel;
+    if (!SystemDAO::getUserLoyaltyInfo(userId, oldPoints, oldLevel))
+    {
+        cout << "Error: Customer not found." << endl;
+        pause(2);
+        return;
+    }
+    cout << "Current Points: " << oldPoints << " | Current Level: " << oldLevel << endl;
+
     cout << "Enter New Points: ";
+    int newPoints;
     cin >> newPoints;
-    
-    cout << "Enter Old Level (e.g., Silver): ";
-    cin >> ws;
-    getline(cin, oldLevel);
-    
-    cout << "Enter New Level (Normal/Silver/Gold/VIP): ";
-    cin >> ws;
-    getline(cin, newLevel);
+
+    Customer temp("", "", Role::Customer, oldPoints, oldLevel);
+    temp.setPoints(newPoints);
+    temp.getLevel()->changeLevel(&temp);
+
+    string newLevel = temp.getLevel()->getLevelName();
 
     if (SystemDAO::manuallyUpdateUserLoyalty(userId, newPoints, newLevel)) 
     {
-        SystemDAO::logLevelChange(userId, oldLevel, newLevel);
-        cout << "Success: User loyalty data updated and logged!" << endl;
+        if (newLevel != oldLevel)
+            SystemDAO::logLevelChange(userId, oldLevel, newLevel);
+
+        cout << "Success: Points set to " << newPoints << ". Level: " << newLevel;
+        if (newLevel != oldLevel) cout << " (was " << oldLevel << ")";
+        cout << endl;
         pause(2);
     } 
     else 
@@ -297,4 +302,24 @@ void SystemManager::manageUserLoyaltyPanel()
         cout << "Error: Could not update user data. Check ID." << endl;
         pause(2);
     }
+}
+void SystemManager::cancelOrder()
+{
+    cout << clear << "--- Cancel Order ---" << endl;
+    int orderId;
+    cout << "Enter Order ID to cancel: ";
+    cin >> orderId;
+
+    int customerId, earnedPoints;
+    double refund;
+    if (OrderDAO::cancelPaidOrder(orderId, customerId, refund, earnedPoints))
+    {
+        cout << "Success: Order " << orderId << " has been Cancelled." << endl;
+        cout << "Refunded $" << refund << " to Wallet and deducted " << earnedPoints << " points from Customer ID " << customerId << "." << endl;
+    }
+    else
+    {
+        cout << "Error: Order not found, or it hasn't been paid for yet!" << endl;
+    }
+    pause(4);
 }

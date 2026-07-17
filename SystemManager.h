@@ -23,4 +23,5 @@ class SystemManager : public User
         void displayLevelStatistics();
         void viewLevelLogs();
         void manageUserLoyaltyPanel();
+        void cancelOrder();
 };

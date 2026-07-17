@@ -30,7 +30,7 @@ void Customer::DisplayOrderHistory () const
     UserDAO::displayCustomerOrderHistory(UserDAO::getUserId(this->get_UserName()));
     cout << "=========================================================" << endl;
     cout << "\nPress Enter to return to menu...";
-    cin.ignore();
+    clearInputLine();
     cin.get(); 
 }
 void Customer::addBalance (double amount) 
@@ -42,6 +42,7 @@ void Customer::addBalance (double amount)
     }
 }
 void Customer::setBalance(double b) { balance = b; }
+void Customer::setPoints(int p) { points = p; }
 void Customer::setLevel(MemberShipLevel *m) 
 { 
     if (this->currentLevel == m) return;
@@ -113,7 +114,7 @@ bool Customer::finalizeOrder (int orderId)
     if (finalPrice < 0) finalPrice = 0.0;
 
     cout << clear;
-    cout << "---------------🧾 ORDER RECEIPT 🧾---------------" << endl
+    cout << "--------------- ORDER RECEIPT ---------------" << endl
          << "Base Cart Price:   $" << fixed << setprecision(2) << totalCartPrice << endl
          << "Level Discount (" << (discountRate * 100) << "%): -$" << discountAmount << endl
          << "Delivery Cost:     +$" << finalDeliveryCost << endl;
@@ -125,23 +126,27 @@ bool Customer::finalizeOrder (int orderId)
 
     if (balance >= finalPrice) 
     {
-        UserDAO::processPaymentAndSaveOrder(cus_ID, orderId, balance, finalPrice, totalCartPrice);
-        balance -= finalPrice;
-                
         double Price = totalCartPrice + finalDeliveryCost;
-        cout << "Success: Payment successful! Total paid: $" << Price << endl;
         int earnedPoints = static_cast <int>(Price * currentLevel->getPointsMultiplier());
 
+        UserDAO::processPaymentAndSaveOrder(cus_ID, orderId, balance, finalPrice, totalCartPrice, earnedPoints);
+        balance -= finalPrice;
+                
+        
+        cout << "Success: Payment successful! Total paid: $" << Price << endl;
         cout << "Loyalty: You earned " << earnedPoints << " points from this order!" << endl;
         this->addPoints(earnedPoints);
         this->checkAndAwardTimeBadge();
 
+        cout << "Press Enter to skip...";
+        cin.get();
         return true;
     } 
     else 
     {
         cout << "Error: Insufficient funds! You need $" << totalCartPrice << " but have $" << balance << endl;
-        pause(2);
+        cout << "Press Enter to skip...";
+        cin.get();
         return false;
     }
 }
@@ -162,15 +167,16 @@ void Customer::ordering (Restaurant *Choice)
         cout << "Options:" << endl
              << "1. Add Item to Cart" << endl
              << "2. Move Item from Cart" << endl
-             << "3. Finalize & Pay" << endl
-             << "4. Cancel Order" << endl
+             << "3. View Cart (Active Order)" << endl
+             << "4. Finalize & Pay" << endl
+             << "5. Cancel Order" << endl
              << "Select: ";
         
         int action;
         cin >> action;
         if (cin.fail()) 
         {
-            cin.clear(); cin.ignore(10000, '\n');
+            clearInputLine();
             continue;
         }
 
@@ -183,7 +189,7 @@ void Customer::ordering (Restaurant *Choice)
             cin >> itemId;
             if (cin.fail()) 
             {
-                cin.clear(); cin.ignore(10000, '\n');
+                clearInputLine();
                 continue;
             }
 
@@ -209,7 +215,7 @@ void Customer::ordering (Restaurant *Choice)
             cin >> removeId;
             if (cin.fail()) 
             {
-                cin.clear(); cin.ignore(10000, '\n');
+                clearInputLine();;
                 continue;
             }
 
@@ -227,13 +233,22 @@ void Customer::ordering (Restaurant *Choice)
         }
         case 3:
         {
+            cout << clear << "--- Your Current Cart ---" << endl;
+            OrderDAO::displayOrderDetails(orderId);
+            cout << "Current Total: $" << OrderDAO::calculateTotal(orderId) << endl;
+            cout << "\nPress Enter to continue...";
+            clearInputLine();
+            cin.get();
+        }
+        case 4:
+        {
             if (finalizeOrder(orderId))
             {
                 isOrdering = false;
             }
             break;
         }
-        case 4:
+        case 5:
         {
             OrderDAO::cancelOrder(orderId);
             cout << "Note: Order cancelled." << endl;
@@ -303,7 +318,7 @@ void Customer::handleWallet()
             cin >> action;
             if (cin.fail())
             {
-                cin.clear(); cin.ignore(10000, '\n');
+                clearInputLine();
                 continue;
             }
             if (action > 0 && action < 3) flag = true;
@@ -360,20 +375,21 @@ void Customer::displayDashboard()
             << "=================================================" << endl;
             
         cout << "1.New Order" << endl
-            << "2.View Order History" << endl
-            << "3.Manage Wallet" << endl
-            << "4.User information management" << endl
-            << "5.View My Coupons" << endl
-            << "6.Claim Monthly Coupons" << endl
-            << "7.View My Badges" << endl
-            << "8.Logout" << endl
+            << "2.Cancel Current Order" << endl
+            << "3.View Order History" << endl
+            << "4.Manage Wallet" << endl
+            << "5.User information management" << endl
+            << "6.View My Coupons" << endl
+            << "7.Claim Monthly Coupons" << endl
+            << "8.View My Badges" << endl
+            << "9.Logout" << endl
             << "=================================================" << endl
             << "Enter your choice: ";
         
         cin >> choice;
         if (cin.fail()) 
         {
-            cin.clear(); cin.ignore(10000, '\n');
+            clearInputLine();
             continue;
         }
 
@@ -381,13 +397,14 @@ void Customer::displayDashboard()
         switch (choice)
         {
             case 1: handleNewOrder(); break;
-            case 2: DisplayOrderHistory(); break;
-            case 3: handleWallet(); break;
-            case 4: this->infomationManagment(); break;
-            case 5: UserDAO::displayUserCoupons(uID); break;
-            case 6: UserDAO::allocateMonthlyCoupons(uID, currentLevel->getMonthlyCouponCount(), currentLevel->getLevelName()); break;
-            case 7: this->displayMyBadges(); break;
-            case 8:
+            case 2: this->applyRefund(); break;
+            case 3: DisplayOrderHistory(); break;
+            case 4: handleWallet(); break;
+            case 5: this->infomationManagment(); break;
+            case 6: UserDAO::displayUserCoupons(uID); break;
+            case 7: UserDAO::allocateMonthlyCoupons(uID, currentLevel->getMonthlyCouponCount(), currentLevel->getLevelName()); break;
+            case 8: this->displayMyBadges(); break;
+            case 9:
                 cout << clear << "Logging out of Customer Dashboard..." << endl;
                 loggedIn = false;
                 break;
@@ -454,7 +471,7 @@ void Customer::checkAndAwardTimeBadge()
                      << badge.getDesc() << endl
                      << "============================================" << endl;
                 cout << "\nPress Enter to return to menu...";
-                cin.ignore();
+                clearInputLine();
                 cin.get(); 
                 UserDAO::saveBadge(this->getInternalId(), badge.getName());
             }
@@ -488,6 +505,61 @@ void Customer::displayMyBadges()
     }
     cout << "============================================" << endl;
     cout << "\nPress Enter to return to menu...";
-    cin.ignore();
+    clearInputLine();
     cin.get(); 
+}
+void Customer::cancelledOrder(double refundAmount, int pointsDeducted)
+{
+
+    this->balance += refundAmount;
+    this->points = (this->points - pointsDeducted < 0) ? 0 : (this->points - pointsDeducted);
+
+    if (this->currentLevel) 
+    {
+        this->currentLevel->changeLevel(this);
+    }
+    string levelName = this->currentLevel ? this->currentLevel->getLevelName() : "Normal";
+    UserDAO::updateUser(*this, this->balance, this->points, levelName);
+}
+void Customer::applyRefund()
+{
+    cout << clear << "==========================================" << endl;
+    cout << "Checking active orders..." << endl;
+    
+    int customerId = UserDAO::getUserId(this->get_UserName());
+    UserDAO::displayCustomerOrderHistory(customerId); 
+    
+    cout << "==========================================" << endl;
+    cout << "Do you want to cancel any of your active/PAID orders? (y/n):";
+    char choice;
+    cin >> choice;
+
+    if (tolower(choice) == 'y')
+    {
+        cout << "Enter the Order ID you wish to cancel (or 0 to skip): ";
+        int orderId;
+        cin >> orderId;
+
+        if (orderId > 0)
+        {
+            double refundAmount = 0.0;
+            int pointsEarned = 0;
+            int dbCustomerId = 0;
+
+            if (OrderDAO::cancelPaidOrder(orderId, dbCustomerId, refundAmount, pointsEarned))
+            {
+                this->cancelledOrder(refundAmount, pointsEarned);
+
+                cout << "\nOrder #" << orderId << " has been successfully cancelled!" << endl;
+                cout << "Amount refunded to your wallet: " << refundAmount << endl;
+                cout << "Points deducted: " << pointsEarned << endl;
+                pause(3);
+            }
+            else
+            {
+                cout << "\nCancellation failed. (Make sure the Order ID is correct and already PAID)" << endl;
+                pause(3);
+            }
+        }
+    }
 }

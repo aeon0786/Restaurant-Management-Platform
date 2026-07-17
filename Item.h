@@ -1,4 +1,5 @@
 #pragma once 
+#include <iostream>
 #include <string>
 
 using namespace std;
@@ -30,4 +31,26 @@ class Item
         double getBase_price () const;
         int getItem_ID () const;
         Item_Status getItem_Status () const;
+};
+class Food:public Item
+{
+    private:
+        int preparation_time;
+    public:
+        Food(string, string, int, double, int);
+
+        void printInfo () const override;
+        Item* clone () const override;
+        double finalPrice () const override;
+};
+class Drink:public Item
+{
+    private:
+        double volume;
+    public:
+        Drink (string, string, int, double, unsigned int);
+
+        void printInfo () const override;
+        Item* clone () const override;
+        double finalPrice () const override;
 };

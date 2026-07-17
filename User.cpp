@@ -61,9 +61,16 @@ void User::infomationManagment ()
         cin >> ws;
         getline (cin, newName);
         this->setName (newName);
-        UserDAO::saveUser(*this, this->getBalance());
-        cout << "Name Updated.";
-        this_thread::sleep_for(chrono::milliseconds(50));
+        if (UserDAO::updateUserProfile(*this))
+        {
+            cout << "User Name Updated.";
+            pause(3);
+        }
+        else
+        {
+            cout << "Error: Database update failed.";
+            pause(3);
+        }
         break;
     }
     case 2 :
@@ -80,14 +87,22 @@ void User::infomationManagment ()
 
         if (this->UpdateUserName (pass, newUName))
         {
-            UserDAO::saveUser(*this, this->getBalance());
-            cout << "User Name Updated.";
+            if (UserDAO::updateUserProfile(*this))
+            {
+                cout << "User Name Updated.";
+                pause(3);
+            }
+            else
+            {
+                cout << "Error: Database update failed.";
+                pause(3);
+            }
         }
         else
         {
             cout << "Incorrect password. User Name NOT updated.";
+            pause(1);
         }
-        this_thread::sleep_for(chrono::milliseconds(50));
         break;
     }
     case 3 :
@@ -143,11 +158,17 @@ void User::infomationManagment ()
         bool updated = this->UpdatePass (old_pass, User_pass);
         if (updated)
         {
-            UserDAO::saveUser(*this, this->getBalance());
-            cout << "User's Password Updated.";
+            if (UserDAO::updateUserProfile(*this))
+            {
+                cout << "User Name Updated.";
+                pause(3);
+            }
+            else
+            {
+                cout << "Error: Database update failed.";
+                pause(3);
+            }
         }
-
-        this_thread::sleep_for(chrono::milliseconds(50));
         break;
     }
     case 4:
@@ -164,14 +185,21 @@ void User::infomationManagment ()
 
         if (this->UpdatePhoneNumber (pass, newUPhone))
         {
-            UserDAO::saveUser(*this, this->getBalance());
-            cout << "User Phone Updated.";
+            if (UserDAO::updateUserProfile(*this))
+            {
+                cout << "User Name Updated.";
+                pause(3);
+            }
+            else
+            {
+                cout << "Error: Database update failed.";
+                pause(3);
+            }
         }
         else
         {
             cout << "Incorrect password. Phone NOT updated.";
         }
-        this_thread::sleep_for(chrono::milliseconds(50));
         break;
     }
     default:

@@ -4,11 +4,8 @@
 
 Order::Order (string n, unsigned int order_id, OrderStatus stat) 
     : name(n), id(order_id), status(stat) {}
-
 Order::Order(const Order& other)
-    : name(other.name), id(other.id), status(other.status) 
-{}
-
+    : name(other.name), id(other.id), status(other.status) {}
 Order::~Order() {}
 void Order::setTotalPrice(double price) { totalPrice = price; }
 void Order::setOrderStatus (OrderStatus stat) { status = stat; }
@@ -16,7 +13,6 @@ double Order::getTotalPrice() const { return totalPrice; }
 OrderStatus Order::getOrderStatus () const { return status; }
 string Order::getOrderName () const { return name; }
 unsigned int Order::getOrderid () const { return id; }
-
 void Order::saveTotalPriceToDB() 
 {
     this->totalPrice = calculateTotalPrice();

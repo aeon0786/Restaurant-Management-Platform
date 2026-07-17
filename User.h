@@ -15,12 +15,12 @@ class User
     protected:
         string name;
         Role role;
-        int getInternalId () { return id; }
-        void setInternalId (int new_id) { id = new_id; }
     public:
         User (string = "Unknown User" , string = "Unknown User", Role = Role::Uncertain);
         virtual ~User() = default;
 
+        void setInternalId (int new_id) { id = new_id; }
+        int getInternalId () const { return id; }
         bool UpdatePass (string, string);
         bool UpdateUserName (string, string);
         bool UpdatePhoneNumber (string, string);

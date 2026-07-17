@@ -58,23 +58,20 @@ int main ()
 
                 registerationBanner();
                 cin >> regChoice;
-
                 if (!regChoice) break;
-
-                string name, user_name, pass;
-                cout << clear
-                     << "Enter your name: ";
-                cin >> ws;
-                getline (cin, name);
-                cout << "Enter your user name: ";
-                cin >> ws;
-                getline (cin, user_name);
-                cout << "Enter a password: ";
-                cin >> ws;
-                getline (cin, pass);
-
                 while (!registered)
                 {
+                    string name, user_name, pass;
+                    cout << clear
+                         << "Enter your name: ";
+                    cin >> ws;
+                    getline (cin, name);
+                    cout << "Enter your user name: ";
+                    cin >> ws;
+                    getline (cin, user_name);
+                    cout << "Enter a password: ";
+                    cin >> ws;
+                    getline (cin, pass);
                     registered = Registeration (name, user_name, pass, regChoice);
                     if (!registered)
                     {

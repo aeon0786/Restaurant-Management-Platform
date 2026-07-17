@@ -25,8 +25,6 @@ class Restaurant
         Restaurant (string = "", string = "", string = "", int = 0, double = 0.0, unsigned int = 0, string = "", Status = Status::Disable);
         ~Restaurant();
         
-        void addOrder (Order *);
-        void removeOrder(unsigned int);
         void displayOrdersHistory () const;
         
         void setName (string &);

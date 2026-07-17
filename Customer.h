@@ -26,6 +26,7 @@ class Customer:public User
         ~Customer();
 
         void setBalance (double);
+        void setPoints(int p);
         void setLevel(MemberShipLevel *);
         void displayDashboard ();
         unsigned int totalOrders () const;
@@ -35,6 +36,8 @@ class Customer:public User
         MemberShipLevel *getLevel() const;
         void checkAndAwardTimeBadge();
         void displayMyBadges();
+        void cancelledOrder(double, int);
+        void applyRefund();
 };
 class Badge
 {

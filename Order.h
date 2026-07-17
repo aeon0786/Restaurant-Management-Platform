@@ -5,8 +5,19 @@
 
 using namespace std;
 
-enum class OrderStatus {WAITING, REGISTERED, IN_PREPARATION, DELIVERED };
-
+enum class OrderStatus {WAITING = 0, REGISTERED, IN_PREPARATION, DELIVERED, CANCELLED};
+inline string orderStatusToString(OrderStatus s)
+{
+    switch (s)
+    {
+        case OrderStatus::WAITING:        return "Waiting";
+        case OrderStatus::REGISTERED:     return "Registered";
+        case OrderStatus::IN_PREPARATION: return "In Preparation";
+        case OrderStatus::DELIVERED:      return "Delivered";
+        case OrderStatus::CANCELLED:      return "Cancelled";
+    }
+    return "Unknown";
+}
 class Order
 {
     private:

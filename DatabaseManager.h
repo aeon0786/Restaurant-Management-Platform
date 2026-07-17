@@ -35,6 +35,7 @@ class UserDAO {
     public:
         struct UserData {
             bool success = false;
+            int id = -1;
             string username;
             string password;
             string name;
@@ -48,6 +49,8 @@ class UserDAO {
     static void allocateMonthlyCoupons(int , int, const string &);
     static void displayUserCoupons(int);
     static bool saveUser(const User &, double = 0.0 ,int = 0, const string &level = "Normal");
+    static bool updateUser(const User &, double = 0.0, int = 0, const string &level ="Normal");
+    static bool updateUserProfile(const User &user);
     static UserData authenticateUser(const string &, const string &);
     static int getUserId(const string &);
 
@@ -61,7 +64,7 @@ class UserDAO {
 
     static vector<string> getUserBadges(int);
     static bool validateAndBurnCoupon(int, const string &);
-    static void processPaymentAndSaveOrder(int, int, double, double, double);
+    static void processPaymentAndSaveOrder(int, int, double, double, double, int);
 
     static void displayCustomerOrderHistory(int);
     static bool submitCreditRequest(int, double);
@@ -77,7 +80,7 @@ class RestaurantDAO
         static bool updateOrderStatus(int, int, int);
         bool updateDeliveryFee(int, double);
     
-        static void displayMenuItems(int);
+        static void displayMenuItems(int);      
         static void displayActiveOrders(int);
         static void displayOrderHistory(int);
         static void displayMenuForCustomer(int);
@@ -93,7 +96,6 @@ class OrderDAO
     static bool updateOrderTotalPrice(int, double);
     static void copyOrderItems(int, int);
     
-    static bool deleteOrderFromRestaurant(int, int);
     static OrderStatus getOrderStatus(int , int);
     static int countRestaurantOrders(int);
     static double calculateRestaurantSales(int);
@@ -101,6 +103,8 @@ class OrderDAO
     static int createNewEmptyOrder(int, int);
     static void cancelOrder(int);
     static int getRestaurantIdForOrder(int);
+    static bool cancelPaidOrder(int, int &, double &, int &);
+
 
 
 };
@@ -124,4 +128,5 @@ class SystemDAO
         static void cleanOrphanedOrders();
         static bool isUserARestaurantManager(int);
         static int displayActiveRestaurants();
+        static bool getUserLoyaltyInfo(int , int &, string &);
 };

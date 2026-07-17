@@ -1,8 +1,6 @@
 #pragma once
 #include <vector>
 #include "Item.h"
-#include "Food.h"
-#include "Drink.h"
 
 class Menu
 {
